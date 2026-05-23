@@ -59,7 +59,7 @@ The public code will create local SQLite databases under `data/`.
 mkdir -p data logs
 ```
 
-Then run the initialization commands provided by the ASCR and ASCR-H modules after the code is migrated into this public package.
+Then run the initialization commands provided by the ASCR and ASCR-H modules.
 
 ## 6. First Run Flow
 

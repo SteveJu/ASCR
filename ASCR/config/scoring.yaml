@@ -1,0 +1,67 @@
+# Scoring weights and thresholds
+# V2: Rebalanced — momentum up from 0.15→0.25, evidence/asymmetry down slightly
+opportunity_weights:
+  evidence: 0.30
+  asymmetry: 0.30
+  momentum: 0.25
+  risk: -0.15
+
+# Regime-aware weight adjustments
+# risk_on: boost momentum, reduce risk penalty (trending market rewards momentum)
+# risk_off: boost evidence+risk, reduce momentum (flight to quality)
+regime_weights:
+  risk_on:
+    evidence: 0.28
+    asymmetry: 0.28
+    momentum: 0.30
+    risk: -0.14
+  neutral:
+    evidence: 0.30
+    asymmetry: 0.30
+    momentum: 0.25
+    risk: -0.15
+  risk_off:
+    evidence: 0.35
+    asymmetry: 0.25
+    momentum: 0.20
+    risk: -0.20
+
+# Rating thresholds (Opportunity Score)
+ratings:
+  S: 75
+  A: 60
+  B: 45
+  C: 30
+  D: 0
+
+# Evidence Score components
+evidence:
+  revenue_acceleration: 20
+  gross_margin_expansion: 15
+  guidance_raise: 15
+  backlog_growth: 15
+  major_customer_contract: 10
+  strategic_partnership: 10
+  ai_segment_growth: 10
+  earnings_tone_positive: 5
+
+# Asymmetry Score components
+asymmetry:
+  small_market_cap_threshold_b: 10
+  recent_spinoff_months: 12
+  low_analyst_coverage: 5
+  ai_revenue_pct_low: 20
+  forward_pe_discount: 30
+
+# Momentum Score components
+momentum:
+  relative_strength_period_days: 20
+  volume_surge_multiplier: 2.0
+  near_52w_high_pct: 0.95
+
+# Risk Score components
+risk:
+  debt_to_equity_high: 2.0
+  dilution_recent_months: 6
+  customer_concentration_pct: 50
+  revenue_decline_quarters: 2

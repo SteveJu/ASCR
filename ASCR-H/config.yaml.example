@@ -1,0 +1,38 @@
+initial_cash: 10000
+
+sizing:
+  per_position_pct: 0.10
+  max_positions: 10
+
+buy:
+  signal: ascr_instructions
+  min_momentum: 50
+  rotation: true
+
+sell:
+  hard_stop_pct: -20
+  trailing_stop_activation_pct: 20
+  trailing_stop_from_peak_pct: -25
+
+ascr:
+  db_path: "../ASCR/data/ascr.sqlite"
+  scores_table: "scores"
+  positions_table: "positions"
+  exit_alerts_table: "exit_alerts"
+  events_table: "events"
+
+shadow:
+  enabled: true
+  forward_days: [5, 10, 20, 60]
+
+reports:
+  daily: true
+  weekly: true
+  output_dir: "reports"
+
+telegram:
+  enabled: false
+  bot_token: "${TELEGRAM_ASCR_H_BOT_TOKEN}"
+  chat_id: "${TELEGRAM_CHAT_ID}"
+  send_trades: true
+  send_daily_summary: true

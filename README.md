@@ -1,6 +1,6 @@
 # ASCR: AI Supply Chain Radar
 
-**Version:** v1.0.0 public shell
+**Version:** v1.1.0 sanitized source migration
 
 ASCR is an open-source event-driven research and paper-trading system for the AI infrastructure supply chain.
 
@@ -121,11 +121,12 @@ See [docs/00-public-release-checklist.md](docs/00-public-release-checklist.md) b
 
 ## Status
 
-This public package is being assembled from a private working system. The first public milestone is:
+This public package is being assembled from a private working system. Current public milestone:
 
+- sanitized ASCR and ASCR-H source trees
 - sanitized configuration
 - reproducible setup
-- ASCR and ASCR-H code without private paths
+- ASCR and ASCR-H code without private paths or private tokens
 - tests
 - backtest methodology and summarized results
 - documentation good enough for another person to run the system with their own keys

@@ -1,6 +1,6 @@
 # Running The System
 
-This document describes the intended operating model. Exact commands will be finalized after the sanitized ASCR and ASCR-H code is migrated into this public repository.
+This document describes the intended operating model for the sanitized ASCR and ASCR-H source trees.
 
 ## Development Mode
 

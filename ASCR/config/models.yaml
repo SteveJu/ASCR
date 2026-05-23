@@ -1,0 +1,41 @@
+# LLM model routing configuration
+# LLM is ONLY used for text understanding, NOT for decisions
+
+tiers:
+  cheap:
+    provider: anthropic
+    model: claude-haiku
+    use_for:
+      - bulk news headline filtering
+      - low-value text screening
+      - keyword extraction
+    max_daily_calls: 200
+
+  standard:
+    provider: anthropic
+    model: claude-sonnet
+    use_for:
+      - SEC filing interpretation
+      - earnings call analysis
+      - event extraction
+      - risk summary
+      - tone analysis
+    max_daily_calls: 50
+
+  premium:
+    provider: anthropic
+    model: claude-opus
+    use_for:
+      - S-tier opportunity final review
+      - complex multi-signal analysis
+      - existing position high-impact events
+    max_daily_calls: 5
+    require_trigger: high_impact_event
+
+# Output format: ALWAYS JSON
+# LLM must NOT decide buy/sell — only extract, summarize, classify
+output_format: json
+
+# Cost tracking
+track_costs: true
+daily_budget_usd: 2.00
