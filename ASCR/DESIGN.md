@@ -1,4 +1,4 @@
-# ASCR v1.3 — Public Design Document
+# ASCR v1.4 — Public Design Document
 
 ## 1. Philosophy
 
@@ -46,7 +46,7 @@ Fetch (Python, free)
 
 ### Scoring
 
-ASCR v1.3 uses a three-layer scoring stack:
+ASCR v1.4 uses a three-layer scoring stack:
 
 1. Base factor context: evidence, asymmetry, momentum, risk.
 2. Event alpha: fresh structured events adjust evidence/asymmetry/risk using source quality, event type, confidence, verdict, conviction, novelty, decay, and priced-in discount.

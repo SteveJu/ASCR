@@ -2,7 +2,7 @@
 
 Goal: publish ASCR as a usable open-source project that combines ASCR, the signal brain, and ASCR-H, the paper-trading hands, while keeping all private runtime data and credentials out of the public repository.
 
-Current status: v1.3.0 has been published with sanitized ASCR, ASCR-H, backtests, docs, sample configs, tests, and the validated scoring engine.
+Current status: v1.4.0 has been published with sanitized ASCR, ASCR-H, backtests, docs, sample configs, tests, the validated scoring engine, and the live replay backtest.
 
 ## Phase 1: Public Shell
 

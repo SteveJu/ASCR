@@ -1,6 +1,6 @@
 # ASCR: AI Supply Chain Radar
 
-**Version:** v1.3.0 validated scoring engine
+**Version:** v1.4.0 live replay backtest
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](#quick-start)
 [![Status](https://img.shields.io/badge/status-research%20framework-orange)](#current-status)
@@ -337,6 +337,7 @@ Current public release:
 - sanitized ASCR-H source tree
 - sanitized backtest source tree
 - validated scoring engine with calibration and ablation tools
+- live replay backtest with ASCR-H-style execution constraints
 - tests for both systems
 - sample universe and config templates
 - docs for setup, APIs, DB/logs, and backtesting

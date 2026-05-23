@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v1.4.0 - Live Replay Backtest
 
 - Aligned public design/setup docs with the v1.3 validated scoring release
 - clarified that private interactive Telegram command bots are not included in the public repo

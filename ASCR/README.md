@@ -1,4 +1,4 @@
-# ASCR v1.3
+# ASCR v1.4
 
 AI Supply Chain Stock Opportunity Discovery & Position Exit System.
 
@@ -43,7 +43,7 @@ Continuous monitoring during market hours (9:00 AM - 4:30 PM ET):
 
 ## Scoring Engine
 
-ASCR v1.3 uses a validated scoring stack:
+ASCR v1.4 keeps the validated scoring stack:
 
 - base dimensions: evidence, asymmetry, momentum, risk
 - event alpha: time-decayed, source-weighted public events with confidence, verdict, conviction, and priced-in adjustment
