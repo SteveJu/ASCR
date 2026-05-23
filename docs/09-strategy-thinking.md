@@ -88,3 +88,13 @@ ASCR-H exists because signal quality is not enough. A usable system also needs:
 - transparent logs
 
 The public project should make both the thesis and the execution consequences visible.
+
+## Backtest Interpretation
+
+Backtests should be read by source profile, not as one blended headline number:
+
+- `sec_only`: asks whether auditable SEC filing events alone carried useful signal.
+- `sec_form4_13f`: adds insider and institutional confirmation signals, with the constraint that 13F data can only be used after filing date.
+- `news_exploratory`: adds historical news-style signals, but treats them as exploratory unless backed by a stable historical news provider.
+
+The live-style replay is the preferred realism check because it starts with no memory and lets ASCR-H-style rules reject trades. A strategy that only works before execution constraints is not a usable strategy.

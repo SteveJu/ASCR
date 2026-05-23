@@ -4,6 +4,7 @@ Usage:
   python run_backtest.py fetch    # Step 1: Download historical data
   python run_backtest.py analyze  # Step 2: Analyze filings with LLM
   python run_backtest.py sim      # Step 3: Run trading simulation
+  python run_backtest.py live     # Live-style Radar/Paper replay from blank state
   python run_backtest.py all      # Run all steps
 """
 import sys
@@ -57,6 +58,18 @@ def main():
 
         from src.simulator_v2 import SimulatorV2
         sim = SimulatorV2()
+        sim.run()
+
+    if cmd == "live":
+        print("\n" + "=" * 60)
+        print("LIVE REPLAY: Blank Memory + Radar/Paper Rules")
+        print("=" * 60)
+
+        from src.live_replay import LiveReplay
+        sim = LiveReplay(
+            run_id=os.environ.get("LIVE_REPLAY_RUN_ID"),
+            profile=os.environ.get("LIVE_REPLAY_PROFILE"),
+        )
         sim.run()
 
     if cmd == "status":

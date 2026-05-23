@@ -77,6 +77,18 @@ python3 -m src.scoring_ablation
 - Minimum `ev_score ≥ 5` required for recommendation
 - Event-type multipliers: SEC contract 1.2× > earnings 1.1× > news 1.0× > Reddit 0.8×
 
+## Backtest Source Profiles
+
+The public backtest package separates source profiles so evidence quality is explicit:
+
+| Profile | Purpose |
+|---|---|
+| `sec_only` | Formal filing-only baseline |
+| `sec_form4_13f` | Adds insider and delayed institutional confirmation |
+| `news_exploratory` | Adds historical news-style signals for exploratory comparison |
+
+The stricter live replay starts with blank memory and applies ASCR-H-style execution constraints. Use it to test whether ASCR intent survives realistic paper-trading rules.
+
 ## Universe
 
 - **57 configured tickers** across 11 sectors: compute, optical, networking, memory, semicap, data_center, eda_ip, energy_grid, power_cooling, memory_storage, new_additions

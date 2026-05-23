@@ -68,6 +68,26 @@ News / SEC / prices / fundamentals
   -> reports, decisions, outcomes
 ```
 
+## Backtest Replay Model
+
+The public `backtests/` package includes a live-style replay that mirrors this brain/hands split:
+
+```text
+historical events
+  -> blank ASCR event memory
+  -> ASCR-style ranking and portfolio intent
+  -> ASCR-H-style rejection rules
+  -> replay trades, blocked orders, and daily equity
+```
+
+The replay is intentionally stricter than the older simulators. It starts with no memory, applies a one-trading-day execution lag, imports trading exclusions, and records rejected orders separately.
+
+Source profiles keep methodology comparisons explicit:
+
+- `sec_only`
+- `sec_form4_13f`
+- `news_exploratory`
+
 ## Local First
 
 ASCR is local-first:

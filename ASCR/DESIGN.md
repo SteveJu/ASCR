@@ -205,6 +205,9 @@ It reports issues; any auto-fix/commit workflow should stay local and explicit.
 ## 13. Known Limitations
 
 - **Backtest survivorship bias**: Universe was selected knowing performance. Dynamic discovery in V2+ mitigates this.
+- **Backtest execution bias**: Prefer the blank-memory live replay for realism because it applies execution lag and ASCR-H-style rejection rules.
+- **Historical news bias**: Google News RSS is useful for exploration, but it is not a stable historical archive.
+- **13F lag**: 13F events must be applied from filing date, not the reported quarter-end date.
 - **Gemini 2.5 Flash thinking**: Can consume output token budget. Mitigated with thinkingBudget cap.
 - **Reddit sentiment**: Low signal-to-noise. Weighted 0.8× vs other sources.
 - **Insider events**: Ambiguous (mostly compensation sells). Weighted 0.5×.

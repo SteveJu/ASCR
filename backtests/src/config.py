@@ -1,4 +1,5 @@
 """Backtest configuration — isolated from live ASCR."""
+import os
 import yaml
 from pathlib import Path
 from dotenv import load_dotenv
@@ -7,7 +8,7 @@ ROOT = Path(__file__).parent.parent
 load_dotenv(ROOT / ".env")
 
 UNIVERSE_FILE = ROOT / "config" / "universe.yaml"
-DB_PATH = ROOT / "data" / "backtest.sqlite"
+DB_PATH = Path(os.environ.get("BACKTEST_DB_PATH", ROOT / "data" / "backtest.sqlite"))
 
 # Backtest period
 START_DATE = "2025-05-13"

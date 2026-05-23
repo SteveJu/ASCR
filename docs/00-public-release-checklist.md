@@ -80,6 +80,9 @@ When publishing backtest results:
 - avoid implying guaranteed returns
 - make methodology reproducible
 - separate backtest metrics from live paper trading metrics
+- separate formal SEC/filing profiles from exploratory news profiles
+- state whether the result used blank-memory live replay or an older simulator
+- state the event availability rule, especially for 13F filing date vs quarter-end date
 
 ## Public Universe Policy
 

@@ -139,6 +139,12 @@ Historic result kept for context:
 
 Because config and execution rules have evolved, this result should not be treated as a direct live-production expectation without rerunning the current 10-position rules.
 
+For current strategy-level validation, prefer the top-level `backtests/` live replay. It starts from blank memory and applies ASCR-H-style execution constraints. Compare source profiles separately:
+
+- `sec_only`
+- `sec_form4_13f`
+- `news_exploratory`
+
 ## Operating Principle
 
 If price is holding, hold. If the price rules fail, exit. If the regime breaks, stop adding risk and review the system.

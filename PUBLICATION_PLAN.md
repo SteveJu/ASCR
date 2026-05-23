@@ -102,11 +102,19 @@ Public backtest should be reproducible from scripts:
 fetch public data
 enrich events
 run LLM analysis
-run simulation
+run source-profile simulations
 generate report
 ```
 
 Backtest claims must be labeled as historical research and include limitations.
+
+Current public source profiles:
+
+- `sec_only`
+- `sec_form4_13f`
+- `news_exploratory`
+
+Treat `news_exploratory` separately from formal filing-only results unless a stable historical news dataset is used.
 
 ## Phase 5: Public Repo Initialization
 

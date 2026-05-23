@@ -84,6 +84,16 @@ Rules are enforced in `src/trading_rules.py`.
 
 `validate_trade_full()` is the preferred validator for execution paths.
 
+## Backtest Relationship
+
+The top-level `backtests/` package includes a live-style replay that uses ASCR-H-style constraints: daily trade limit, sell cooldown, turnover cap, and PDT approximation. Use that replay for strategy-level validation before comparing looser simulator results.
+
+Recommended source profiles:
+
+- `sec_only`
+- `sec_form4_13f`
+- `news_exploratory`
+
 ## Telegram
 
 Telegram notification support is optional. The public ASCR-H source drop includes notification helpers, but not the private interactive command bot. If you add your own command bot, route manual buy/sell actions through the same full rule validator used by the executor.

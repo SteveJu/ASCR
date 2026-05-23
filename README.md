@@ -145,6 +145,19 @@ ASCR/
 
 Runtime files such as `.env`, `data/`, `logs/`, and SQLite databases are intentionally ignored by git.
 
+## Backtesting Methodology Update
+
+The public `backtests/` package now includes a stricter live-style replay mode:
+
+```bash
+cd backtests
+python3 run_backtest.py live
+```
+
+This mode starts from a blank state, ingests historical events forward in time, applies an execution lag, and lets ASCR-H-style paper rules reject orders. It is intended to be a more realistic complement to the older V1/V2/V3 simulators.
+
+See [docs/08-backtesting.md](docs/08-backtesting.md).
+
 ## Quick Start
 
 Clone:
@@ -255,6 +268,15 @@ Headline research results:
 | V2 | Dynamic universe | Weekly | +115% | 2.26 | -22% | n/a |
 | V3 Weekly | Enriched events + insider signals | Weekly | +173% | 2.92 | -19% | 70% |
 | V3 Daily | Enriched events + insider signals | Daily | +260% | 3.55 | -17% | 64% |
+| Live Replay | Blank memory + ASCR-H-style execution | Daily | +217% | 3.25 | -21% | n/a |
+
+`Live Replay` is the stricter baseline because it starts with no memory, applies an execution lag, imports ASCR trading exclusions, and lets ASCR-H-style paper rules reject orders.
+
+The recommended source split is:
+
+- `sec_only`
+- `sec_form4_13f`
+- `news_exploratory`
 
 These numbers are historical research, not a prediction. The point of publishing ASCR is to make the method inspectable and easier to challenge.
 

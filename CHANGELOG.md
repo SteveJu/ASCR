@@ -5,6 +5,9 @@
 - Aligned public design/setup docs with the v1.3 validated scoring release
 - clarified that private interactive Telegram command bots are not included in the public repo
 - removed stale migration-status language from database/log setup docs and publication plan
+- added a live-style blank-memory backtest replay that applies execution lag, ASCR trading exclusions, and ASCR-H-style order rejection rules
+- added live replay source profiles for `sec_only`, `sec_form4_13f`, and `news_exploratory` runs
+- documented historical news and 13F handling boundaries for formal vs exploratory backtests
 
 ## v1.3.0 - Validated Scoring Engine
 
