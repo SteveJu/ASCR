@@ -1,5 +1,7 @@
 # ASCR: AI Supply Chain Radar
 
+**Version:** v1.0.0 public shell
+
 ASCR is an open-source event-driven research and paper-trading system for the AI infrastructure supply chain.
 
 The project has two parts:
