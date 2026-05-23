@@ -2,7 +2,14 @@
 
 **Version:** v1.1.0 sanitized source migration
 
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](#quick-start)
+[![Status](https://img.shields.io/badge/status-research%20framework-orange)](#current-status)
+[![Paper Trading](https://img.shields.io/badge/trading-paper%20only-lightgrey)](#what-it-does-not-do)
+[![Local First](https://img.shields.io/badge/storage-local%20SQLite-green)](#privacy-model)
+
 ASCR is an open-source, local-first research system for studying the AI infrastructure supply chain with event-driven signals and paper trading.
+
+**Keywords:** AI supply chain, event-driven investing, market intelligence, stock analysis, paper trading, quantitative finance, LLM investing research, SEC filings, backtesting, Telegram bot, SQLite.
 
 It is designed as two separate systems:
 
@@ -17,6 +24,19 @@ ASCR-H = the hands
 This repository is a public, sanitized version of a private working system. It contains source code, tests, docs, sample configs, and setup guidance. It does not contain private API keys, Telegram tokens, databases, logs, or local account state.
 
 ASCR is not financial advice, not a broker, and not an auto-trading system. It is a research framework for people who want to inspect, fork, test, and improve an event-driven approach to AI supply-chain investing.
+
+## Who This Is For
+
+ASCR is for:
+
+- builders who want a local-first market intelligence project to inspect and extend
+- quant/dev researchers interested in event-driven stock signals
+- people studying AI infrastructure and supply-chain equities
+- LLM engineers looking for a practical structured-output finance workflow
+- paper-trading users who want transparent rules instead of black-box alerts
+- open-source contributors who want to challenge the backtest and improve the methodology
+
+ASCR is not for anyone looking for guaranteed returns, live broker execution, or a finished financial product.
 
 ## What Problem It Tries To Solve
 
@@ -56,6 +76,20 @@ ASCR-H, the hands:
 - records paper orders and positions
 - tracks equity, drawdown, decisions, and outcomes
 - produces reports and optional Telegram notifications
+
+## Why It May Be Interesting
+
+Most stock tools start from charts, factors, or broad financial statements. ASCR starts from public events:
+
+- a customer win
+- an 8-K material agreement
+- an earnings call comment about AI demand
+- a data center power bottleneck
+- a supply shortage
+- an insider cluster
+- a supplier or counterparty mention
+
+The system then asks whether that event has second-order implications elsewhere in the AI supply chain. The goal is not to let an LLM trade. The goal is to convert messy public information into inspectable structured evidence.
 
 ## What It Does Not Do
 
