@@ -1,6 +1,6 @@
 # ASCR: AI Supply Chain Radar
 
-**Version:** v1.2.0 public backtest package
+**Version:** v1.3.0 validated scoring engine
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](#quick-start)
 [![Status](https://img.shields.io/badge/status-research%20framework-orange)](#current-status)
@@ -64,7 +64,7 @@ ASCR, the brain:
 - watches news, SEC filings, price events, and supply-chain signals
 - extracts structured events with LLM assistance
 - logs AI API usage and estimated cost
-- scores evidence, asymmetry, momentum, and risk
+- scores evidence, asymmetry, momentum, risk, event alpha, and optional feedback alpha
 - ranks tickers in an AI supply-chain universe
 - outputs buy/sell/hold intent for a paper executor
 
@@ -116,7 +116,7 @@ Public data
 ASCR
   ├─ event pipeline
   ├─ SQLite event store
-  ├─ scoring and ranking
+  ├─ scoring, calibration, ablation, and ranking
   ├─ recommendation engine
   └─ AI usage and cost logs
 
@@ -198,6 +198,10 @@ python3 tests/test_regressions.py
 python3 tests/test_brain_contract.py
 python3 tests/test_event_schema.py
 python3 tests/test_event_daemon_contract.py
+python3 tests/test_scoring.py
+python3 tests/test_scoring_calibration.py
+python3 tests/test_scoring_ablation.py
+python3 tests/test_scoring_feedback.py
 ```
 
 Run ASCR-H tests:
@@ -258,6 +262,34 @@ See [docs/08-backtesting.md](docs/08-backtesting.md).
 
 Backtest code is available in [backtests/](backtests/).
 
+## Scoring Validation
+
+ASCR includes a validated scoring stack:
+
+- `event_alpha`: decayed, source-weighted structured events
+- `feedback_alpha`: optional ASCR-H outcome feedback with sample-size shrinkage
+- `scoring_calibration.py`: weight search against score/forward-return pairs
+- `scoring_ablation.py`: baseline vs calibrated vs feedback walk-forward comparison
+
+The default production weights are pinned to the strict as-of ablation winner:
+
+```yaml
+evidence: 0.35
+asymmetry: 0.30
+momentum: 0.25
+risk: -0.10
+```
+
+To run local validation after generating your own DBs:
+
+```bash
+cd ASCR
+python3 -m src.scoring_calibration
+python3 -m src.scoring_ablation
+```
+
+Feedback validation only uses ASCR-H outcomes known as of each historical scoring date, avoiding future outcome leakage.
+
 ## Privacy Model
 
 The public repo should never contain:
@@ -282,6 +314,7 @@ Current public release:
 - sanitized ASCR source tree
 - sanitized ASCR-H source tree
 - sanitized backtest source tree
+- validated scoring engine with calibration and ablation tools
 - tests for both systems
 - sample universe and config templates
 - docs for setup, APIs, DB/logs, and backtesting
@@ -291,7 +324,6 @@ Planned improvements:
 
 - cleaner CLI entrypoints for first-time users
 - public-safe Telegram bot rewrite
-- reproducible public backtest package
 - example outputs and screenshots
 - GitHub Actions test workflow
 

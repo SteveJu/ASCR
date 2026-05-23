@@ -1,4 +1,4 @@
-# ASCR V4.3 — Design Document
+# ASCR v1.3 — Public Design Document
 
 ## 1. Philosophy
 

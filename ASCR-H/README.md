@@ -32,7 +32,7 @@ Main modules:
 | Execution | `event_trader`, `intraday_monitor`, `trading_rules` |
 | State | `db`, `portfolio`, `config` |
 | Validation | `decision_logger`, `outcome_evaluator`, `decision_quality`, `strategy_health`, `degradation_detector`, `validation_report` |
-| Reporting | `telegram_notifier`, `telegram_bot`, `weekly_report`, `report` |
+| Reporting | `telegram_notifier`, `weekly_report`, `report` |
 | Regime | `regime_monitor` |
 | Legacy / research | `momentum_live`, `momentum_backtester`, `historical_backtester`, `strategy_backtest`, `execution_engine`, `broker_simulator`, `signal_reader`, `shadow_tracker` |
 
@@ -46,7 +46,7 @@ Legacy modules may still run, but the live production executor is `event_trader`
 | 12:30 ET | `com.ASCR-H.intraday` | Stop monitoring plus urgent sells and slot fills |
 | Real-time | ASCR event daemon | Triggers `intraday_monitor.run_intraday_trades()` on actionable events |
 | Friday 18:00 ET | `com.ASCR-H.weekly` | Weekly performance report |
-| Always | `com.ASCR-H.bot` | Telegram command handler |
+| Optional | private overlay | Interactive Telegram layer, not included in the public repo |
 
 ## Strategy Parameters
 
@@ -84,30 +84,9 @@ Rules are enforced in `src/trading_rules.py`.
 
 `validate_trade_full()` is the preferred validator for execution paths.
 
-## Telegram Bot
+## Telegram
 
-Bot: ASCR-H Bot (`@ASCR-H Bot_bot`)
-
-View commands:
-
-- `/positions`
-- `/summary`
-- `/compare`
-- `/events`
-- `/ranking`
-- `/regime`
-- `/system`
-- `/help`
-
-Manual action commands:
-
-- `/buy TICKER`
-- `/sell TICKER`
-- `/sell all`
-- `/add TICKER`
-- `/remove TICKER`
-
-Manual buy/sell commands now run through the same full rule validator used by the executor. Universe add/remove edits ASCR's universe config.
+Telegram notification support is optional. The public ASCR-H source drop includes notification helpers, but not the private interactive command bot. If you add your own command bot, route manual buy/sell actions through the same full rule validator used by the executor.
 
 ## Runtime State
 
@@ -117,16 +96,7 @@ Runtime state is intentionally local and ignored by Git:
 - `logs/*.err`, `logs/*.log` - daemon and command logs
 - `__pycache__/`, `*.pyc` - Python cache
 
-Current local DB snapshot at the time of this update:
-
-- Open positions: `ETR`, `HUT`, `IREN`, `LITE`, `NVTS`, `SBGSY`, `SMH`, `TSEM`, `VRT`
-- Closed positions: `9`
-- Orders: `31`
-- Decision records: `916`
-- Cash: `$0`
-- Peak equity: about `$11,239`
-
-These numbers are operational state, not source truth. Use `python3 -m src.main status` for current values.
+Runtime numbers are operational state, not source truth. Use `python3 -m src.main status` for current local values.
 
 ## Logging
 
@@ -184,7 +154,7 @@ Current lightweight checks:
 ```bash
 python3 tests/test_validation.py
 python3 tests/test_execution.py
-python3 -m py_compile src/db.py src/event_trader.py src/intraday_monitor.py src/telegram_bot.py
+python3 -m py_compile src/db.py src/event_trader.py src/intraday_monitor.py src/telegram_notifier.py
 ```
 
 `pytest` is not currently required by `requirements.txt`; the existing tests can be run directly.

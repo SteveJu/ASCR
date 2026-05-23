@@ -1,4 +1,4 @@
-"""ASCR V4 — CLI entry point with performance-first improvements."""
+"""ASCR public CLI entry point."""
 import sys
 import os
 import argparse

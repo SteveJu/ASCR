@@ -1,30 +1,94 @@
 # Scoring weights and thresholds
-# V2: Rebalanced — momentum up from 0.15→0.25, evidence/asymmetry down slightly
+# V3: strict as-of ablation selected calibrated_weights.
+# Validation: IC +0.0055, top5 spread +1.1983 vs baseline, 4/4 folds not worse.
 opportunity_weights:
-  evidence: 0.30
+  evidence: 0.35
   asymmetry: 0.30
   momentum: 0.25
-  risk: -0.15
+  risk: -0.10
+
+# Event alpha turns structured public events into decayed score adjustments.
+# This is the project-specific signal layer: filings, contracts, supply-chain
+# catalysts, verdict/conviction, source quality, novelty, and priced-in risk.
+event_alpha:
+  enabled: true
+  lookback_days: 45
+  half_life_days: 14
+  max_evidence_adjustment: 45
+  max_asymmetry_adjustment: 35
+  max_risk_adjustment: 40
+  min_confidence: 0.25
+  source_weights:
+    sec: 1.20
+    sec_filing: 1.20
+    form4: 1.15
+    press_release: 1.00
+    news: 0.85
+    google_news: 0.80
+    reddit: 0.55
+    price_event: 0.60
+  event_type_weights:
+    major_contract: 1.35
+    contract: 1.30
+    guidance_raise: 1.25
+    guidance: 1.15
+    earnings: 1.00
+    sec_filing: 1.05
+    partnership: 0.90
+    insider_buy: 1.15
+    insider_sell: 0.75
+    dilution: 1.30
+    financing: 1.20
+    risk: 1.25
+    fraud_concern: 1.50
+    price_surge: 0.65
+    other: 0.70
+  verdict_scores:
+    STRONG_BUY: 8
+    BUY: 5
+    HOLD: 0
+    AVOID: -5
+    SELL: -8
+  conviction_weights:
+    HIGH: 1.00
+    MEDIUM: 0.70
+    LOW: 0.40
+
+# Feedback alpha uses ASCR-H decision logs and ASCR experience logs.
+# It is deliberately bounded and shrinkage-weighted: logs inform scoring, but
+# do not override fresh evidence.
+feedback_alpha:
+  enabled: true
+  horizon_days: 20
+  min_samples: 5
+  full_confidence_samples: 30
+  max_adjustment: 12
+  paper_trader_db: ../ASCR-H/data/ascr_h.sqlite
+  components:
+    ticker_alpha: 0.50
+    rating_alpha: 0.25
+    event_type_alpha: 0.25
+    quality: 0.15
 
 # Regime-aware weight adjustments
-# risk_on: boost momentum, reduce risk penalty (trending market rewards momentum)
-# risk_off: boost evidence+risk, reduce momentum (flight to quality)
+# Temporarily pinned to the validated calibrated profile. Regime-specific
+# scoring overrides should be re-enabled only after separate as-of validation.
 regime_weights:
   risk_on:
-    evidence: 0.28
-    asymmetry: 0.28
-    momentum: 0.30
-    risk: -0.14
-  neutral:
-    evidence: 0.30
+    evidence: 0.35
     asymmetry: 0.30
     momentum: 0.25
-    risk: -0.15
+    risk: -0.10
+  neutral:
+    evidence: 0.35
+    asymmetry: 0.30
+    momentum: 0.25
+    risk: -0.10
   risk_off:
     evidence: 0.35
-    asymmetry: 0.25
-    momentum: 0.20
-    risk: -0.20
+    asymmetry: 0.30
+    momentum: 0.25
+    risk: -0.10
 
 # Rating thresholds (Opportunity Score)
 ratings:

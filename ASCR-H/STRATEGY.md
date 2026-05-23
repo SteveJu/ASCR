@@ -118,18 +118,9 @@ Primary questions:
 - Are rating/ranking tiers predictive?
 - Is DQS stable over time?
 
-## Current Live State
+## Local State
 
-Current local DB snapshot at this update:
-
-- Open positions: `ETR`, `HUT`, `IREN`, `LITE`, `NVTS`, `SBGSY`, `SMH`, `TSEM`, `VRT`
-- Closed positions: `9`
-- Orders: `31`
-- Decisions: `916`
-- Cash: `$0`
-- Peak equity: about `$11,239`
-
-This is not a hardcoded strategy assumption. It is runtime state and should be checked with:
+Runtime state is generated locally and should not be committed. Check your own paper account with:
 
 ```bash
 python3 -m src.main status

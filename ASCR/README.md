@@ -1,4 +1,4 @@
-# ASCR V4.3
+# ASCR v1.3
 
 AI Supply Chain Stock Opportunity Discovery & Position Exit System.
 
@@ -28,18 +28,46 @@ Continuous monitoring during market hours (9:00 AM - 4:30 PM ET):
 - Immediately triggers ASCR-H on actionable events
 - Cost: ~$0.03/cycle max (most cycles are free — nothing new)
 
-## Modules (51)
+## Modules
 
 | Category | Modules |
 |----------|---------|
-| **Core** | `recommender` (ranking engine), `scoring`, `rating`, `config` |
+| **Core** | `recommender` (ranking engine), `scoring`, `scoring_calibration`, `scoring_ablation`, `scoring_feedback`, `rating`, `config` |
 | **Data** | `event_pipeline`, `price_fetcher`, `sec_fetcher`, `insider_tracker`, `news_fetcher` |
 | **Analysis** | `analysis_engine`, `event_daemon`, `fast_scan`, `discovery_engine`, `sector_discovery` |
 | **LLM** | `gemini_client` (Gemini primary → Flash fallback), `llm_usage` (usage/cost logging), `event_classifier`, `model_router` |
 | **Risk** | `bubble_detector` (3-level circuit breaker), `market_regime`, `exit_rules`, `universe_pruner` |
 | **Intelligence** | `supply_chain` (graph propagation), `leveraged_etf_monitor`, `experience_tracker` |
-| **Output** | `telegram_bot` (ASCR Bot), `telegram_notifier`, `report_generator`, `system_report` |
+| **Output** | `telegram_notifier`, `report_generator`, `system_report` |
 | **Infrastructure** | `db`, `activity_log`, `data_cleanup`, `utils` |
+
+## Scoring Engine
+
+ASCR v1.3 uses a validated scoring stack:
+
+- base dimensions: evidence, asymmetry, momentum, risk
+- event alpha: time-decayed, source-weighted public events with confidence, verdict, conviction, and priced-in adjustment
+- feedback alpha: optional ASCR-H outcome feedback with sample-size shrinkage and hard caps
+- calibration: grid search against score/forward-return pairs
+- ablation: strict as-of comparison of baseline, calibrated, feedback, and combined scoring variants
+
+Current production weights:
+
+```yaml
+evidence: 0.35
+asymmetry: 0.30
+momentum: 0.25
+risk: -0.10
+```
+
+Regime-specific scoring overrides are pinned to the same validated profile until they have separate as-of validation.
+
+Run local validation after generating your own local DBs:
+
+```bash
+python3 -m src.scoring_calibration
+python3 -m src.scoring_ablation
+```
 
 ## Event-Driven Ranking
 
@@ -73,11 +101,11 @@ Continuous monitoring during market hours (9:00 AM - 4:30 PM ET):
 | 16:30 | `com.ASCR.discovery` | New ticker discovery |
 | 17:15 | `com.ASCR.universe-scan` | Weekly universe evaluation |
 | 17:30 | `com.ascr.daily` (PM) | Full event pipeline + rankings + Telegram push |
-| Always | `com.ASCR.bot` | Telegram command handler (KeepAlive) |
+| Optional | private overlay | Interactive Telegram layer, not included in the public repo |
 
-## Telegram Bot Commands
+## Telegram
 
-`/picks` `/universe` `/top` `/events` `/hot` `/regime` `/new` `/ticker X` `/why X` `/insider` `/reddit` `/scan` `/log` `/remove X` `/bubble` `/experience` `/patterns` `/review` `/system` `/etf` `/prune` `/discover` `/help`
+Telegram notification support is optional. The first public ASCR source drop does not include the private interactive command bot.
 
 ## Data
 
@@ -105,6 +133,6 @@ stop at RSS fetch + Python dedup. The cost log is the source of truth for actual
 pip install -r requirements.txt
 export ANTHROPIC_API_KEY=...
 export GEMINI_API_KEY=...
-# Configure config/telegram.yaml with bot token + chat_id
+# Optional: cp config/telegram.example.yaml config/telegram.yaml
 python3 -m src.main run-daily
 ```

@@ -45,6 +45,23 @@ Each event gets an `evidence_delta`.
 
 Multiple weak events should not automatically equal one strong thesis. ASCR caps event-count amplification and prefers diverse, specific event types.
 
+The current public scoring stack has three layers:
+
+- base features: evidence, asymmetry, momentum, and risk
+- event alpha: time-decayed, source-weighted public events with verdict, conviction, confidence, and priced-in adjustment
+- feedback alpha: optional ASCR-H outcome feedback with sample-size shrinkage and hard caps
+
+Default production weights are currently pinned to the strict as-of ablation winner:
+
+```yaml
+evidence: 0.35
+asymmetry: 0.30
+momentum: 0.25
+risk: -0.10
+```
+
+Feedback validation is strict as-of: each historical scoring date can only use ASCR-H outcomes whose evaluation date was already known by that date.
+
 The recommended ranking flow is:
 
 ```text

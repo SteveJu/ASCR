@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.3.0 - Validated Scoring Engine
+
+Added the public-safe scoring upgrade:
+
+- event alpha layer for decayed, source-weighted structured events
+- optional feedback alpha layer using ASCR-H outcome logs
+- strict as-of feedback validation to avoid future outcome leakage
+- calibration tool for scoring weights
+- ablation tool comparing baseline, calibrated, feedback, and combined variants
+- tests for scoring, calibration, feedback, and ablation
+
+Production scoring weights are pinned to the strict as-of ablation winner:
+
+- evidence `0.35`
+- asymmetry `0.30`
+- momentum `0.25`
+- risk `-0.10`
+
+Safety work:
+
+- ASCR-H DB path is public-safe and configurable
+- no private SQLite snapshots, reports, logs, local paths, or personal identifiers were added
+- private interactive bot references and local paper-account snapshots were removed from public docs/source output
+
+Validation:
+
+- ASCR scoring, feedback, calibration, ablation, regression, rating, exit-rule, brain-contract, event-schema, and daemon-contract tests passed
+- ASCR-H validation, execution, DB-integrity, and trading-rule tests passed
+- Python scoring source compiles
+- safety scans found no real token, private path, personal email, `.env`, SQLite DB, log file, or pyc file in the migrated scoring files
+
 ## v1.2.0 - Public Backtest Package
 
 Added the sanitized historical backtest package:

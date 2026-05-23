@@ -28,12 +28,12 @@ cp config/universe.sample.yaml config/universe.yaml
 Edit `.env`:
 
 ```bash
-GEMINI_API_KEY=your_gemini_key
-ANTHROPIC_API_KEY=your_anthropic_key
-SEC_USER_AGENT_EMAIL=your_email@example.com
-TELEGRAM_ASCR_BOT_TOKEN=your_ascr_bot_token
-TELEGRAM_ASCR_H_BOT_TOKEN=your_ascr_h_bot_token
-TELEGRAM_CHAT_ID=your_chat_id
+GEMINI_API_KEY=<your-gemini-api-key>
+ANTHROPIC_API_KEY=<your-anthropic-api-key>
+SEC_USER_AGENT_EMAIL=<your-email@example.com>
+TELEGRAM_ASCR_BOT_TOKEN=<your-ascr-bot-token>
+TELEGRAM_ASCR_H_BOT_TOKEN=<your-ascr-h-bot-token>
+TELEGRAM_CHAT_ID=<your-chat-id>
 ```
 
 You do not need every provider on day one. Start with one supported LLM key and add the rest later.

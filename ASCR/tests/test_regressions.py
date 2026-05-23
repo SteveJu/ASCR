@@ -39,74 +39,6 @@ def test_fetch_prices_writes_volume_not_adj_close():
     assert calls == [("AAA", "2026-05-18", 10.0, 11.0, 9.0, 10.5, 123456)]
 
 
-def test_telegram_ticker_uses_score_column_names():
-    try:
-        from src import telegram_bot
-    except ImportError:
-        return
-
-    fd, path = tempfile.mkstemp(suffix=".sqlite")
-    os.close(fd)
-    try:
-        conn = sqlite3.connect(path)
-        conn.execute("""
-            CREATE TABLE events (
-                ticker TEXT, headline TEXT, evidence_delta REAL, event_type TEXT, date TEXT
-            )
-        """)
-        conn.execute("""
-            CREATE TABLE scores (
-                ticker TEXT, date TEXT, evidence_score REAL, asymmetry_score REAL,
-                momentum_score REAL, risk_score REAL, opportunity_score REAL, rating TEXT
-            )
-        """)
-        conn.execute("""
-            INSERT INTO scores VALUES
-            ('MU', '2026-05-20', 11, 22, 33, 44, 55, 'B')
-        """)
-        conn.commit()
-        conn.close()
-
-        old_db = telegram_bot._radar_db
-        old_price = telegram_bot.get_live_price
-        def _test_db():
-            test_conn = sqlite3.connect(path)
-            test_conn.row_factory = sqlite3.Row
-            return test_conn
-
-        telegram_bot._radar_db = _test_db
-        telegram_bot.get_live_price = lambda ticker: 12.34
-        output = telegram_bot.cmd_ticker("MU")
-    finally:
-        telegram_bot._radar_db = old_db
-        telegram_bot.get_live_price = old_price
-        os.remove(path)
-
-    assert "E=11 A=22 M=33 R=44" in output
-    assert "Opp=55 Rating=B" in output
-
-
-def test_telegram_regime_handles_dict_result():
-    import src.market_regime as market_regime
-    try:
-        from src import telegram_bot
-    except ImportError:
-        return
-
-    old_detect = market_regime.detect_regime
-    try:
-        market_regime.detect_regime = lambda: {
-            "regime": "risk_on",
-            "reason": "QQQ above trend",
-        }
-        output = telegram_bot.cmd_regime()
-    finally:
-        market_regime.detect_regime = old_detect
-
-    assert "RISK_ON" in output
-    assert "QQQ above trend" in output
-
-
 def test_llm_usage_estimates_and_logs_cost():
     from src import llm_usage
     import src.db as real_db
@@ -332,8 +264,6 @@ def test_db_and_event_pipeline_share_compatible_events_schema():
 
 if __name__ == "__main__":
     test_fetch_prices_writes_volume_not_adj_close()
-    test_telegram_ticker_uses_score_column_names()
-    test_telegram_regime_handles_dict_result()
     test_llm_usage_estimates_and_logs_cost()
     test_gemini_generate_logs_billable_output_tokens()
     test_rankings_fetch_prices_only_for_event_qualified_tickers()

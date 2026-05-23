@@ -350,26 +350,19 @@ def generate_system_report() -> str:
     lines.append("  Analysis: recommender, scoring, rating, price_events")
     lines.append("  Learning: experience_tracker, performance_feedback_loop")
     lines.append("  Safety: bubble_detector, market_regime, data_quality")
-    lines.append("  Bot: telegram_bot, telegram_notifier")
+    lines.append("  Notifications: telegram_notifier")
     lines.append("")
     lines.append("ASCR-H/ (30 .py)")
     lines.append("  Core: main, config, db, event_trader")
     lines.append("  Execution: trading_rules, intraday_monitor")
     lines.append("  Validation: decision_logger, outcome_evaluator, decision_quality")
-    lines.append("  Bot: telegram_bot, telegram_notifier")
+    lines.append("  Notifications: telegram_notifier")
     lines.append("")
 
-    # ── Dual Bots ──
-    lines.append("<b>═══ TELEGRAM BOTS ═══</b>")
-    lines.append("  \U0001f4e1 ASCR Bot \u2014 signals, analysis, discovery")
-    lines.append("    /picks /universe /top /events /hot /new")
-    lines.append("    /ticker X /why X /insider /reddit")
-    lines.append("    /regime /bubble /experience /patterns")
-    lines.append("    /scan /review /log /system /help")
-    lines.append("")
-    lines.append("  \U0001f3cb ASCR-H Bot \u2014 paper trading execution")
-    lines.append("    /positions /summary /compare /buy X /sell X")
-    lines.append("    /sell all /system /help")
+    # ── Telegram ──
+    lines.append("<b>═══ TELEGRAM ═══</b>")
+    lines.append("  Public repo includes notification senders.")
+    lines.append("  Interactive command bots can be added as a private/local overlay.")
 
     return "\n".join(lines)
 

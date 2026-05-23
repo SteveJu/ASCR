@@ -80,9 +80,9 @@ conn.close()
 # 5. LAUNCHD
 result = subprocess.run(["launchctl", "list"], capture_output=True, text=True)
 expected = [
-    "com.ASCR.bot", "com.ascr.daily", "com.ASCR.fast-scan",
+    "com.ascr.daily", "com.ASCR.fast-scan",
     "com.ASCR.discovery", "com.ASCR.universe-scan", "com.ASCR.event-daemon",
-    "com.ASCR-H.bot", "com.ASCR-H.daily", "com.ASCR-H.intraday", "com.ASCR-H.weekly",
+    "com.ASCR-H.daily", "com.ASCR-H.intraday", "com.ASCR-H.weekly",
 ]
 pids = {}
 for job in expected:

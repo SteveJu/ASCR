@@ -4,9 +4,154 @@ from datetime import datetime
 from src import config, db
 from src.price_fetcher import get_ticker_info
 from src.rating import compute_rating, compute_tracking_priority
+from src.scoring_feedback import feedback_adjustment
 from src.utils import get_logger
 
 logger = get_logger("scoring")
+
+
+def _clamp(value: float, low: float = 0, high: float = 100) -> float:
+    return max(low, min(high, value))
+
+
+def _parse_event_date(event: dict):
+    raw = event.get("date") or event.get("event_date") or event.get("created_at")
+    if raw is None:
+        return None
+    if isinstance(raw, (int, float)):
+        try:
+            return datetime.fromtimestamp(raw)
+        except Exception:
+            return None
+    if isinstance(raw, str):
+        for fmt in ("%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"):
+            try:
+                return datetime.strptime(raw[:19], fmt)
+            except ValueError:
+                continue
+    return None
+
+
+def _event_alpha_score(events: list, event_cfg: dict = None, as_of: datetime = None) -> tuple:
+    """Convert recent structured events into score adjustments.
+
+    The old engine mostly scored static fundamentals and generic price state.
+    This layer is where ASCR's actual edge should live: time-decayed, source-
+    weighted, novelty-aware public events with priced-in penalties.
+    """
+    event_cfg = event_cfg or {}
+    as_of = as_of or datetime.now()
+    half_life = max(float(event_cfg.get("half_life_days", 14)), 1.0)
+    min_conf = float(event_cfg.get("min_confidence", 0.25))
+    source_weights = event_cfg.get("source_weights", {})
+    event_type_weights = event_cfg.get("event_type_weights", {})
+    verdict_scores = event_cfg.get("verdict_scores", {})
+    conviction_weights = event_cfg.get("conviction_weights", {})
+
+    evidence_adj = 0.0
+    asymmetry_adj = 0.0
+    risk_adj = 0.0
+    used = 0
+    skipped = 0
+    seen = set()
+    top_events = []
+
+    for event in events or []:
+        key = event.get("hash") or event.get("url") or event.get("headline") or event.get("title")
+        duplicate_penalty = 1.0
+        if key:
+            if key in seen:
+                duplicate_penalty = 0.35
+            seen.add(key)
+
+        conf = event.get("confidence")
+        try:
+            conf = float(conf) if conf is not None else 0.60
+        except (TypeError, ValueError):
+            conf = 0.60
+        if conf < min_conf:
+            skipped += 1
+            continue
+
+        dt = _parse_event_date(event)
+        age_days = max((as_of - dt).days, 0) if dt else 0
+        decay = 0.5 ** (age_days / half_life)
+
+        source = str(event.get("source") or "other").lower()
+        event_type = str(event.get("event_type") or "other").lower()
+        source_weight = float(source_weights.get(source, source_weights.get("other", 0.75)))
+        type_weight = float(event_type_weights.get(event_type, event_type_weights.get("other", 0.70)))
+
+        priced_in = event.get("priced_in_pct")
+        try:
+            priced_in = float(priced_in) if priced_in is not None else 25.0
+        except (TypeError, ValueError):
+            priced_in = 25.0
+        priced_in_multiplier = max(0.25, 1.0 - priced_in / 100.0)
+
+        verdict = str(event.get("verdict") or "").upper()
+        conviction = str(event.get("conviction") or "").upper()
+        verdict_delta = float(verdict_scores.get(verdict, 0))
+        conviction_weight = float(conviction_weights.get(conviction, 0.65 if verdict_delta else 1.0))
+
+        try:
+            ev_delta = float(event.get("evidence_delta") or 0)
+        except (TypeError, ValueError):
+            ev_delta = 0.0
+        try:
+            as_delta = float(event.get("asymmetry_delta") or 0)
+        except (TypeError, ValueError):
+            as_delta = 0.0
+        try:
+            ri_delta = float(event.get("risk_delta") or 0)
+        except (TypeError, ValueError):
+            ri_delta = 0.0
+
+        multiplier = decay * source_weight * type_weight * conf * duplicate_penalty
+        positive_multiplier = multiplier * priced_in_multiplier
+
+        ev_component = ev_delta * (positive_multiplier if ev_delta > 0 else multiplier)
+        ev_component += verdict_delta * conviction_weight * positive_multiplier
+        as_component = as_delta * (positive_multiplier if as_delta > 0 else multiplier)
+        ri_component = ri_delta * multiplier
+
+        evidence_adj += ev_component
+        asymmetry_adj += as_component
+        risk_adj += ri_component
+        used += 1
+
+        headline = event.get("headline") or event.get("title") or event.get("summary") or event_type
+        top_events.append({
+            "headline": str(headline)[:120],
+            "type": event_type,
+            "source": source,
+            "age_days": age_days,
+            "evidence_adj": round(ev_component, 2),
+            "asymmetry_adj": round(as_component, 2),
+            "risk_adj": round(ri_component, 2),
+            "priced_in_pct": priced_in,
+        })
+
+    max_ev = float(event_cfg.get("max_evidence_adjustment", 45))
+    max_as = float(event_cfg.get("max_asymmetry_adjustment", 35))
+    max_ri = float(event_cfg.get("max_risk_adjustment", 40))
+    adjustments = {
+        "evidence": max(-max_ev, min(max_ev, evidence_adj)),
+        "asymmetry": max(-max_as, min(max_as, asymmetry_adj)),
+        "risk": max(-max_ri, min(max_ri, risk_adj)),
+    }
+    details = {
+        "used_events": used,
+        "skipped_low_confidence": skipped,
+        "raw_adjustments": {
+            "evidence": round(evidence_adj, 2),
+            "asymmetry": round(asymmetry_adj, 2),
+            "risk": round(risk_adj, 2),
+        },
+        "adjustments": {k: round(v, 2) for k, v in adjustments.items()},
+        "top_events": sorted(top_events, key=lambda e: abs(e["evidence_adj"]) + abs(e["risk_adj"]), reverse=True)[:5],
+    }
+    return adjustments, details
 
 
 def _momentum_score(ticker: str, prices: list, info: dict) -> tuple:
@@ -262,6 +407,39 @@ def compute_scores(tickers: list = None):
             asymmetry, as_details = _asymmetry_score(ticker, info)
             momentum, mo_details = _momentum_score(ticker, prices, info)
             risk, ri_details = _risk_score(ticker, info)
+            base_scores = {
+                "evidence": evidence,
+                "asymmetry": asymmetry,
+                "momentum": momentum,
+                "risk": risk,
+            }
+
+            event_cfg = cfg.get("event_alpha", {})
+            recent_events = db.get_events(ticker, days=int(event_cfg.get("lookback_days", 45)))
+            event_details = {"enabled": False}
+            if event_cfg.get("enabled", True):
+                event_adj, event_details = _event_alpha_score(recent_events, event_cfg)
+                event_details["enabled"] = True
+                evidence = _clamp(evidence + event_adj["evidence"])
+                asymmetry = _clamp(asymmetry + event_adj["asymmetry"])
+                risk = _clamp(risk + event_adj["risk"])
+
+            feedback_details = {"enabled": False}
+            feedback_cfg = cfg.get("feedback_alpha", {})
+            if feedback_cfg.get("enabled", True):
+                provisional_opp = (
+                    evidence * weights.get("evidence", 0.35) +
+                    asymmetry * weights.get("asymmetry", 0.35) +
+                    momentum * weights.get("momentum", 0.15) +
+                    risk * weights.get("risk", -0.15)
+                )
+                provisional_rating = compute_rating(provisional_opp, evidence, asymmetry, risk, momentum)
+                feedback_adj, feedback_details = feedback_adjustment(
+                    ticker, provisional_rating, recent_events, feedback_cfg
+                )
+                evidence = _clamp(evidence + feedback_adj["evidence"])
+                asymmetry = _clamp(asymmetry + feedback_adj["asymmetry"])
+                risk = _clamp(risk + feedback_adj["risk"])
 
             # Opportunity Score
             opp = (
@@ -276,8 +454,7 @@ def compute_scores(tickers: list = None):
 
             # Tracking priority
             has_position = ticker in held_tickers
-            recent_events = db.get_events(ticker, days=7)
-            tracking_priority = compute_tracking_priority(rating, has_position, recent_events)
+            tracking_priority = compute_tracking_priority(rating, has_position, recent_events[:10])
 
             # Build reason and next_trigger
             reason = _build_reason(rating, evidence, asymmetry, momentum, risk, info)
@@ -285,10 +462,13 @@ def compute_scores(tickers: list = None):
 
             details = {
                 "info": {k: v for k, v in info.items() if v is not None},
+                "base_scores": base_scores,
                 "evidence": ev_details,
                 "asymmetry": as_details,
                 "momentum": mo_details,
                 "risk": ri_details,
+                "event_alpha": event_details,
+                "feedback_alpha": feedback_details,
             }
 
             db.upsert_score(ticker, today, evidence, asymmetry, momentum, risk, opp, rating,
