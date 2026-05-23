@@ -2,94 +2,212 @@
 
 **Version:** v1.1.0 sanitized source migration
 
-ASCR is an open-source event-driven research and paper-trading system for the AI infrastructure supply chain.
+ASCR is an open-source, local-first research system for studying the AI infrastructure supply chain with event-driven signals and paper trading.
 
-The project has two parts:
+It is designed as two separate systems:
 
 ```text
-ASCR   = the brain: AI Supply Chain Radar
-ASCR-H = the hands: AI Supply Chain Radar Hands
+ASCR   = the brain
+         watches public information, extracts events, scores tickers, ranks opportunities
+
+ASCR-H = the hands
+         reads ASCR intent, applies paper-trading constraints, simulates orders, tracks PnL
 ```
 
-ASCR watches public information, turns events into structured signals, ranks opportunities, and explains why a stock may deserve attention. ASCR-H reads ASCR's intent, applies execution constraints, simulates trades, records decisions, and reports performance.
+This repository is a public, sanitized version of a private working system. It contains source code, tests, docs, sample configs, and setup guidance. It does not contain private API keys, Telegram tokens, databases, logs, or local account state.
 
-This is not a broker, not financial advice, and not an auto-trading system. It is a research framework for people who want to study event-driven investing with their own API keys, Telegram bots, and paper account assumptions.
+ASCR is not financial advice, not a broker, and not an auto-trading system. It is a research framework for people who want to inspect, fork, test, and improve an event-driven approach to AI supply-chain investing.
 
-## Why This Exists
+## What Problem It Tries To Solve
 
-The AI buildout is not one stock. It is a supply chain:
+The AI buildout is not only about one GPU company. It is a supply chain:
 
-- chips and memory
+- memory and storage
 - semiconductor equipment
 - optical networking
 - power and cooling
 - data centers
 - energy and grid infrastructure
-- software and design tools
+- chip design and EDA tools
 
-ASCR tries to answer one practical question:
+ASCR asks:
 
-> When a new event happens somewhere in the AI supply chain, which public companies may benefit or be hurt before the market fully digests it?
+> When a new public event happens somewhere in the AI supply chain, which public companies might benefit or be hurt before the market fully digests it?
 
-## Core Ideas
+The system turns public events into structured evidence, then ranks companies by signal strength, conviction, and risk.
 
-- **Event-driven, not price-only.** Price action matters, but the first-class input is new information.
-- **LLMs extract judgment; rules make decisions.** LLMs classify and summarize. Deterministic scoring and trading rules decide what the system outputs.
-- **Brain and hands are separate.** ASCR produces buy/sell/hold intent. ASCR-H handles sizing, constraints, simulated fills, PnL, and logs.
-- **Everything should be inspectable.** Signals, costs, decisions, trades, and outcomes should be stored locally and explainable.
+## What It Does
+
+ASCR, the brain:
+
+- fetches public market information
+- watches news, SEC filings, price events, and supply-chain signals
+- extracts structured events with LLM assistance
+- logs AI API usage and estimated cost
+- scores evidence, asymmetry, momentum, and risk
+- ranks tickers in an AI supply-chain universe
+- outputs buy/sell/hold intent for a paper executor
+
+ASCR-H, the hands:
+
+- reads ASCR recommendations
+- validates paper trades against execution rules
+- sizes simulated positions from cash and portfolio constraints
+- records paper orders and positions
+- tracks equity, drawdown, decisions, and outcomes
+- produces reports and optional Telegram notifications
+
+## What It Does Not Do
+
+ASCR does not:
+
+- place real broker orders
+- manage real money
+- guarantee returns
+- hide risk behind an LLM
+- require you to trust opaque decisions
+
+The design goal is inspectable research. LLMs help extract and classify text; deterministic code makes the scoring and execution decisions.
+
+## Architecture
+
+```text
+Public data
+  ├─ Google News RSS
+  ├─ SEC filings
+  ├─ Yahoo Finance
+  ├─ price events
+  └─ optional sentiment / discovery sources
+
+ASCR
+  ├─ event pipeline
+  ├─ SQLite event store
+  ├─ scoring and ranking
+  ├─ recommendation engine
+  └─ AI usage and cost logs
+
+ASCR-H
+  ├─ paper account state
+  ├─ trading rule validation
+  ├─ simulated orders
+  ├─ positions and equity curve
+  └─ decision and performance reports
+```
+
+See [docs/01-architecture.md](docs/01-architecture.md).
 
 ## Repository Layout
 
 ```text
 ASCR/
-  ASCR/           # Brain: events, scoring, ranking, recommendations
-  ASCR-H/         # Hands: paper execution, positions, orders, PnL, constraints
-  backtests/      # Historical validation tools and summarized results
-  config/         # Example configs only
-  docs/           # Setup, architecture, strategy notes, privacy checklist
-  examples/       # Sample outputs and payloads
+  ASCR/            # signal brain: events, scoring, ranking, recommendations
+  ASCR-H/          # paper-trading hands: orders, positions, PnL, constraints
+  config/          # public example configs
+  docs/            # setup, architecture, API, DB/logs, backtesting notes
+  .env.example     # local secrets template
+  README.md
 ```
 
-The public version intentionally ships without private runtime state. The AI supply chain universe is public research content and can be shared. You bring your own API keys, Telegram bots, and local runtime data.
+Runtime files such as `.env`, `data/`, `logs/`, and SQLite databases are intentionally ignored by git.
 
 ## Quick Start
 
-```bash
-git clone https://github.com/YOUR_USERNAME/ASCR.git
-cd ASCR
+Clone:
 
+```bash
+git clone https://github.com/SteveJu/ASCR.git
+cd ASCR
+```
+
+Create a Python environment:
+
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-
-cp .env.example .env
-cp config/telegram.example.yaml config/telegram.yaml
-cp config/universe.sample.yaml config/universe.yaml
+pip install -r ASCR/requirements.txt
+pip install -r ASCR-H/requirements.txt
 ```
 
-Then edit `.env` and `config/telegram.yaml` with your own credentials.
+Create local config:
 
-See [docs/03-installation.md](docs/03-installation.md) for the full setup.
+```bash
+cp .env.example .env
+cp config/telegram.example.yaml config/telegram.yaml
+cp ASCR/config/telegram.example.yaml ASCR/config/telegram.yaml
+cp ASCR-H/config.yaml.example ASCR-H/config.yaml
+mkdir -p ASCR/data ASCR/logs ASCR-H/data ASCR-H/logs
+```
 
-Detailed setup guides:
+Edit `.env` with your own keys:
 
+```bash
+GEMINI_API_KEY=<your-key>
+ANTHROPIC_API_KEY=<your-key>
+SEC_USER_AGENT_EMAIL=<your-email>
+TELEGRAM_ASCR_BOT_TOKEN=<optional-token>
+TELEGRAM_ASCR_H_BOT_TOKEN=<optional-token>
+TELEGRAM_CHAT_ID=<optional-chat-id>
+```
+
+Telegram is optional. You can run the core tests and local research flow without Telegram.
+
+## Verify The Install
+
+Run ASCR tests:
+
+```bash
+cd ASCR
+python3 tests/test_regressions.py
+python3 tests/test_brain_contract.py
+python3 tests/test_event_schema.py
+python3 tests/test_event_daemon_contract.py
+```
+
+Run ASCR-H tests:
+
+```bash
+cd ../ASCR-H
+python3 tests/test_validation.py
+python3 tests/test_execution.py
+python3 tests/test_trading_rules.py
+python3 tests/test_db_integrity.py
+```
+
+Compile all Python files:
+
+```bash
+cd ..
+python3 -m py_compile $(find ASCR/src ASCR/scripts ASCR/tests ASCR-H/src ASCR-H/tests -name '*.py' -print)
+```
+
+## Running The System
+
+The exact production workflow depends on your local config and API keys, but the intended flow is:
+
+```text
+1. initialize local SQLite databases
+2. run ASCR scans to collect events and scores
+3. inspect ASCR rankings and portfolio intent
+4. initialize ASCR-H with paper cash
+5. run ASCR-H to simulate orders from ASCR intent
+6. review decisions, positions, equity, and logs
+```
+
+Useful docs:
+
+- [Installation](docs/03-installation.md)
 - [Configuration](docs/02-configuration.md)
-- [Telegram setup](docs/04-telegram-setup.md)
 - [Database and logs](docs/06-database-and-logs.md)
 - [API keys and cost controls](docs/07-api-keys-and-costs.md)
-
-## What You Need
-
-- Python 3.11+
-- A Gemini API key, Anthropic API key, or both
-- Optional Telegram bot token and chat id
-- Internet access for public data sources such as Yahoo Finance, Google News RSS, and SEC EDGAR
+- [Telegram setup](docs/04-telegram-setup.md)
+- [Running the system](docs/05-running-the-system.md)
 
 ## Backtest Summary
 
-The private research backtest used SEC filings, historical prices, and LLM event analysis to test whether the event-driven framework had signal value.
+The private research branch tested whether public filings, historical prices, and LLM event extraction could produce useful AI supply-chain signals.
 
-Headline result from the research branch:
+Headline research results:
 
 | Version | Universe | Rebalance | Return | Sharpe | Max Drawdown | Win Rate |
 |---|---|---:|---:|---:|---:|---:|
@@ -98,38 +216,58 @@ Headline result from the research branch:
 | V3 Weekly | Enriched events + insider signals | Weekly | +173% | 2.92 | -19% | 70% |
 | V3 Daily | Enriched events + insider signals | Daily | +260% | 3.55 | -17% | 64% |
 
-Important caveat: these are research results, not a promise of future returns. The public repo should make the methodology reproducible and inspectable rather than asking anyone to trust a headline number.
+These numbers are historical research, not a prediction. The point of publishing ASCR is to make the method inspectable and easier to challenge.
 
 See [docs/08-backtesting.md](docs/08-backtesting.md).
 
-## Privacy And Safety
+## Privacy Model
 
-This repo should never contain:
+The public repo should never contain:
 
 - real API keys
 - Telegram bot tokens
 - `.env`
-- local SQLite databases
+- SQLite databases
 - logs
 - local account state
 - private chat ids
-- personal file paths
+- personal absolute paths
 
-Chinese-localized bot messages and personal notification workflows are private by default. They can be added later as a generic localization layer, but they should not be mixed into the first public release.
+The AI supply-chain universe is public research content. Private notification style, local runtime data, and personal workflow overlays should stay local.
 
-See [docs/00-public-release-checklist.md](docs/00-public-release-checklist.md) before publishing.
+See [docs/00-public-release-checklist.md](docs/00-public-release-checklist.md).
 
-## Status
+## Current Status
 
-This public package is being assembled from a private working system. Current public milestone:
+Current public release:
 
-- sanitized ASCR and ASCR-H source trees
-- sanitized configuration
-- reproducible setup
-- ASCR and ASCR-H code without private paths or private tokens
-- tests
-- backtest methodology and summarized results
-- documentation good enough for another person to run the system with their own keys
+- sanitized ASCR source tree
+- sanitized ASCR-H source tree
+- tests for both systems
+- sample universe and config templates
+- docs for setup, APIs, DB/logs, and backtesting
+- no private runtime state or secrets
+
+Planned improvements:
+
+- cleaner CLI entrypoints for first-time users
+- public-safe Telegram bot rewrite
+- reproducible public backtest package
+- example outputs and screenshots
+- GitHub Actions test workflow
+
+## Contributing
+
+Useful contributions include:
+
+- improving setup docs
+- testing on a fresh machine
+- finding broken assumptions in the backtest
+- adding public-safe data adapters
+- improving risk controls
+- making ASCR-H execution rules easier to audit
+
+Please do not open issues or PRs containing real API keys, Telegram tokens, screenshots with chat ids, or private account state.
 
 ## Disclaimer
 
