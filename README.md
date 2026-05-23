@@ -69,6 +69,13 @@ Then edit `.env` and `config/telegram.yaml` with your own credentials.
 
 See [docs/03-installation.md](docs/03-installation.md) for the full setup.
 
+Detailed setup guides:
+
+- [Configuration](docs/02-configuration.md)
+- [Telegram setup](docs/04-telegram-setup.md)
+- [Database and logs](docs/06-database-and-logs.md)
+- [API keys and cost controls](docs/07-api-keys-and-costs.md)
+
 ## What You Need
 
 - Python 3.11+
