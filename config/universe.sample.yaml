@@ -1,0 +1,50 @@
+# Sample AI supply chain universe.
+# Edit this for your own research process.
+
+benchmarks:
+  - SPY
+  - QQQ
+
+excluded_from_trading:
+  tickers:
+    - NVDA
+  reason: "Tracked as supply-chain signal source; excluded from sample paper execution."
+
+sectors:
+  memory:
+    name: "Memory and storage"
+    tickers:
+      - MU
+      - WDC
+      - STX
+
+  networking:
+    name: "AI networking and optical"
+    tickers:
+      - ANET
+      - CIEN
+      - LITE
+      - COHR
+      - GLW
+
+  power_cooling:
+    name: "Power and cooling"
+    tickers:
+      - VRT
+      - ETN
+      - MOD
+
+  semiconductor_equipment:
+    name: "Semiconductor equipment"
+    tickers:
+      - ASML
+      - AMAT
+      - LRCX
+      - KLAC
+
+  design_tools:
+    name: "Chip design and IP"
+    tickers:
+      - ARM
+      - CDNS
+      - SNPS

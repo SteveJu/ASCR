@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local secrets
+.env
+.env.*
+!.env.example
+config/telegram.yaml
+config/radar.yaml
+config/paper_trader.yaml
+
+# Runtime state
+data/
+logs/
+reports/private/
+*.sqlite
+*.sqlite-*
+*.db
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/

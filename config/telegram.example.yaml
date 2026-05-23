@@ -1,0 +1,12 @@
+# Copy to config/telegram.yaml and fill in your own Telegram bot tokens.
+# Do not commit config/telegram.yaml.
+
+primary:
+  name: "ASCR Bot"
+  bot_token: "${TELEGRAM_ASCR_BOT_TOKEN}"
+  chat_id: "${TELEGRAM_CHAT_ID}"
+
+hands:
+  name: "ASCR-H Bot"
+  bot_token: "${TELEGRAM_ASCR_H_BOT_TOKEN}"
+  chat_id: "${TELEGRAM_CHAT_ID}"
