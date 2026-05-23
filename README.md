@@ -1,6 +1,6 @@
 # ASCR: AI Supply Chain Radar
 
-**Version:** v1.1.0 sanitized source migration
+**Version:** v1.2.0 public backtest package
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](#quick-start)
 [![Status](https://img.shields.io/badge/status-research%20framework-orange)](#current-status)
@@ -136,6 +136,7 @@ See [docs/01-architecture.md](docs/01-architecture.md).
 ASCR/
   ASCR/            # signal brain: events, scoring, ranking, recommendations
   ASCR-H/          # paper-trading hands: orders, positions, PnL, constraints
+  backtests/       # reproducible historical validation code
   config/          # public example configs
   docs/            # setup, architecture, API, DB/logs, backtesting notes
   .env.example     # local secrets template
@@ -161,6 +162,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 pip install -r ASCR/requirements.txt
 pip install -r ASCR-H/requirements.txt
+pip install -r backtests/requirements.txt
 ```
 
 Create local config:
@@ -239,7 +241,7 @@ Useful docs:
 
 ## Backtest Summary
 
-The private research branch tested whether public filings, historical prices, and LLM event extraction could produce useful AI supply-chain signals.
+The `backtests/` package tests whether public filings, historical prices, and LLM event extraction could produce useful AI supply-chain signals.
 
 Headline research results:
 
@@ -253,6 +255,8 @@ Headline research results:
 These numbers are historical research, not a prediction. The point of publishing ASCR is to make the method inspectable and easier to challenge.
 
 See [docs/08-backtesting.md](docs/08-backtesting.md).
+
+Backtest code is available in [backtests/](backtests/).
 
 ## Privacy Model
 
@@ -277,6 +281,7 @@ Current public release:
 
 - sanitized ASCR source tree
 - sanitized ASCR-H source tree
+- sanitized backtest source tree
 - tests for both systems
 - sample universe and config templates
 - docs for setup, APIs, DB/logs, and backtesting

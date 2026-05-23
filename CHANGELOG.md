@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.2.0 - Public Backtest Package
+
+Added the sanitized historical backtest package:
+
+- `backtests/run_backtest.py`
+- `backtests/run_backtest_v2_period.py`
+- SEC filing fetch/enrichment pipeline
+- historical price fetcher
+- V1 and V2 simulation engines
+- public universe/scoring config
+- standalone backtest dependency file
+
+Safety work:
+
+- excluded `.env`, SQLite databases, downloaded SEC cache, generated price data, logs, and pycache
+- replaced private SEC user-agent identity with `SEC_USER_AGENT_EMAIL`
+- renamed public-facing backtest docs from the old private project name to ASCR
+- kept the package isolated from live ASCR and ASCR-H runtime state
+
+Validation:
+
+- Python backtest source compiles
+- safety scans found no real token, `.env`, SQLite DB, pyc file, personal path, or private email in the public backtest package
+
 ## v1.1.0 - Sanitized Source Migration
 
 Migrated sanitized source trees into the public repo:

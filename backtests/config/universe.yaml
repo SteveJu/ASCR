@@ -1,0 +1,117 @@
+benchmarks:
+  tickers:
+  - QQQ
+  - SPY
+discovery_keywords:
+- AI infrastructure
+- data center
+- HBM
+- DRAM
+- NAND
+- enterprise SSD
+- eSSD
+- optical transceiver
+- 800G
+- 1.6T
+- liquid cooling
+- power management
+- grid interconnection
+- GPU cluster
+- NVIDIA Blackwell
+- NVL72
+- hyperscaler
+- capacity reservation
+- multi-year agreement
+- prepayment
+- warrant
+- strategic partnership
+- Microsoft
+- Amazon
+- Google
+- Meta
+- Oracle
+- NVIDIA
+- AMD
+- Broadcom
+sectors:
+  compute:
+    name: Compute
+    tickers:
+    - NVDA
+    - AMD
+    - INTC
+  data_center:
+    name: Data Center / Neocloud
+    tickers:
+    - IREN
+    - CRWV
+    - NBIS
+    - EQIX
+    - DLR
+  eda_ip:
+    name: EDA / IP
+    tickers:
+    - SNPS
+    - CDNS
+    - ARM
+    - SAP
+  energy_grid:
+    name: Energy / Grid
+    tickers:
+    - CEG
+    - VST
+    - NEE
+  memory:
+    name: Memory
+    tickers:
+    - SMCI
+  memory_storage:
+    name: Memory / Storage
+    tickers:
+    - MU
+    - SNDK
+    - WDC
+    - STX
+  networking:
+    name: Networking
+    tickers:
+    - ANET
+    - MRVL
+    - AVGO
+    - CSCO
+  new_additions:
+    name: New_Additions
+    tickers:
+    - APLD
+    - TSM
+    - KEEL
+  optical:
+    name: Optical
+    tickers:
+    - LITE
+    - COHR
+    - GLW
+    - CIEN
+    - AAOI
+    - CRDO
+    - MXL
+  power_cooling:
+    name: Power / Cooling
+    tickers:
+    - VRT
+    - ETN
+    - PWR
+    - MOD
+    - IDA
+    - VICR
+    - 'ON'
+  semicap:
+    name: Semicap
+    tickers:
+    - ASML
+    - AMAT
+    - LRCX
+    - KLAC
+    - TER
+    - ACMR
+    - UCTT

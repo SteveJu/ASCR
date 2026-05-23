@@ -8,7 +8,7 @@ Can an event-driven AI supply chain system discover tradable signals from public
 
 ## Private Research Result Summary
 
-The initial research branch used:
+The public `backtests/` package is a sanitized migration of the research backtest code. It uses:
 
 - SEC 8-K filings
 - SEC Form 4 insider events
@@ -55,16 +55,17 @@ Good questions to ask:
 - What happens with a broader universe?
 - Does the system survive weak AI market regimes?
 
-## Planned Public Backtest Package
+## Public Backtest Package
 
-The public repo should include:
+The public repo includes:
 
-- data download scripts
+- `backtests/run_backtest.py`
+- `backtests/run_backtest_v2_period.py`
+- SEC download scripts
+- price download scripts
 - event enrichment scripts
-- simulator
+- simulators
 - benchmark comparison
-- reproducible result report
 - configuration for different universe assumptions
 
-It should not include private SQLite snapshots.
-
+It does not include private SQLite snapshots. Users generate their own local `backtests/data/*.sqlite` files.
