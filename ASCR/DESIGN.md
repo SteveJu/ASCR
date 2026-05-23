@@ -42,11 +42,28 @@ Fetch (Python, free)
 - On actionable event: triggers ASCR-H via subprocess
 - Cost model: fetch is free, dedup is free, LLM only fires on genuinely new events
 
-## 3. Ranking System
+## 3. Ranking And Scoring System
 
 ### Scoring
 
-Each ticker accumulates an event score over a 30-day window:
+ASCR v1.3 uses a three-layer scoring stack:
+
+1. Base factor context: evidence, asymmetry, momentum, risk.
+2. Event alpha: fresh structured events adjust evidence/asymmetry/risk using source quality, event type, confidence, verdict, conviction, novelty, decay, and priced-in discount.
+3. Feedback alpha: optional ASCR-H outcome feedback adds small bounded adjustments with sample-size shrinkage.
+
+Current public production weights:
+
+```yaml
+evidence: 0.35
+asymmetry: 0.30
+momentum: 0.25
+risk: -0.10
+```
+
+Regime-specific overrides are pinned to this validated profile until separate regime validation exists.
+
+The recommender still uses event quality to rank near-term opportunities:
 
 ```
 ev_score = AVG(evidence_delta) × MIN(event_count, 8)
@@ -107,6 +124,8 @@ Auxiliary: Leveraged ETF monitor tracks single-stock ETF launches and AUM as bub
 
 **Key rule**: System suggests, human approves. No auto rule changes.
 
+The feedback layer is bounded and validated strict as-of: each historical scoring date can only use ASCR-H outcomes whose evaluation date was already known at that time.
+
 ## 8. Discovery
 
 ### Discovery Engine (`src/discovery_engine.py`)
@@ -153,6 +172,11 @@ For Gemini, thinking tokens are counted as billable output tokens.
 - `activity_log` — Structured operation log
 - `llm_calls` — AI API usage/cost log by model and purpose
 
+Validation/report outputs:
+
+- `reports/scoring_calibration/YYYY-MM-DD.json`
+- `reports/scoring_ablation/YYYY-MM-DD.json`
+
 `data/experience.sqlite`:
 
 - `signal_outcomes` — Event → actual price impact tracking
@@ -160,17 +184,13 @@ For Gemini, thinking tokens are counted as billable output tokens.
 - `monthly_reviews` — Opus review history
 - `signal_type_stats` — Per event-type accuracy stats
 
-## 11. Telegram Bot
+## 11. Telegram
 
-Bot: **ASCR Bot** (@jusinvest_bot)
-
-Full command set with Chinese/English support. Long-polling daemon (KeepAlive).
-
-Key commands: `/picks` (top recommendations), `/why X` (deep analysis), `/ticker X` (full report), `/system` (architecture report), `/bubble` (circuit breaker status).
+The public source includes Telegram notification helpers. The private interactive command bot is intentionally not included in the public repo. Users can add their own local command layer and route it through the same scoring, reporting, and validation APIs.
 
 ## 12. Weekly Health Check
 
-`scripts/healthcheck.py` — automated via OpenClaw cron (Sundays 10:00 AM):
+`scripts/healthcheck.py` can be run locally or scheduled by the user:
 
 1. Import all modules (both projects)
 2. Shadowed import detection
@@ -180,7 +200,7 @@ Key commands: `/picks` (top recommendations), `/why X` (deep analysis), `/ticker
 6. Recommender integration test
 7. Position sanity check
 
-Auto-fixes bugs, commits, pushes, reports to Telegram.
+It reports issues; any auto-fix/commit workflow should stay local and explicit.
 
 ## 13. Known Limitations
 

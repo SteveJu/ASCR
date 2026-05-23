@@ -1,10 +1,12 @@
-# ASCR Public Publication Plan
+# ASCR Public Publication Status And Maintenance Plan
 
 Goal: publish ASCR as a usable open-source project that combines ASCR, the signal brain, and ASCR-H, the paper-trading hands, while keeping all private runtime data and credentials out of the public repository.
 
+Current status: v1.3.0 has been published with sanitized ASCR, ASCR-H, backtests, docs, sample configs, tests, and the validated scoring engine.
+
 ## Phase 1: Public Shell
 
-Status: started.
+Status: complete in v1.0.0.
 
 Deliverables:
 
@@ -27,6 +29,8 @@ ASCR-H = AI Supply Chain Radar Hands, the paper-trading executor
 ```
 
 ## Phase 2: Sanitized ASCR Migration
+
+Status: complete in v1.1.0, with scoring upgraded in v1.3.0.
 
 Copy the signal-engine source into `ASCR/`, then remove or refactor:
 
@@ -55,6 +59,8 @@ python3 ASCR/tests/test_event_schema.py
 
 ## Phase 3: Sanitized ASCR-H Migration
 
+Status: complete in v1.1.0. Private interactive bots and runtime account state remain out of the public repo.
+
 Copy the paper-execution source into `ASCR-H/`, then remove or refactor:
 
 - absolute Radar path
@@ -81,6 +87,8 @@ python3 ASCR-H/tests/test_execution.py
 
 ## Phase 4: Backtest Package
 
+Status: complete in v1.2.0. Backtest claims remain historical research context, not promises of future returns.
+
 Copy backtest code only after removing:
 
 - `.env`
@@ -102,13 +110,15 @@ Backtest claims must be labeled as historical research and include limitations.
 
 ## Phase 5: Public Repo Initialization
 
+Status: complete. Keep using this checklist before every public push.
+
 Only after all privacy checks pass:
 
 ```bash
 cd ASCR
 git init
 git add .
-git commit -m "Initial public release"
+git commit -m "Describe the public-safe change"
 ```
 
 Before push:

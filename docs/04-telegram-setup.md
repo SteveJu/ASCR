@@ -1,8 +1,8 @@
 # Telegram Setup
 
-Telegram is optional, but it makes the system easier to use.
+Telegram is optional. The public repo includes notification helpers and example config; the private interactive command bots are not included.
 
-ASCR supports two-bot separation:
+Recommended two-bot separation:
 
 - ASCR bot: signals, rankings, events, system status
 - ASCR-H bot: positions, orders, PnL, execution summaries
@@ -14,7 +14,7 @@ ASCR supports two-bot separation:
 3. Run `/newbot`.
 4. Create one bot for ASCR.
 5. Create one bot for ASCR-H.
-6. Copy the tokens into your local `.env`.
+6. Copy the tokens into your local `.env` or local config file.
 
 Example:
 
@@ -33,6 +33,10 @@ Common methods:
 - log incoming Telegram updates locally during development
 
 Do not publish your chat id if you do not want it associated with your identity.
+
+## Command Bots
+
+The public repo does not ship the private command bot layer. If you add one locally, keep tokens and localized personal wording out of git. For ASCR-H write commands, route all trade actions through the same validator used by the executor.
 
 ## Security
 

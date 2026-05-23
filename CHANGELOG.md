@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Aligned public design/setup docs with the v1.3 validated scoring release
+- clarified that private interactive Telegram command bots are not included in the public repo
+- removed stale migration-status language from database/log setup docs and publication plan
+
 ## v1.3.0 - Validated Scoring Engine
 
 Added the public-safe scoring upgrade:

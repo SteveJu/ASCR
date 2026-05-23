@@ -122,7 +122,7 @@ Implemented in `src/trading_rules.py`.
 | Gap risk | Warning for stop sells executed below target stop |
 | Wash sale | Warning for rebuy within 30 days of loss sale |
 
-Manual Telegram buy/sell and automated execution both use `validate_trade_full()`.
+Automated execution uses `validate_trade_full()`. Any local/manual command overlay should use the same validator before writing orders.
 
 ## 5. Position Sizing
 
@@ -225,7 +225,7 @@ Important logging behavior:
 - DB write functions log cash changes, position changes, orders, equity snapshots, shadow updates, and peak updates.
 - Price fetchers log failures and DB fallbacks.
 - Telegram notifier logs disabled, missing config, send success, and send failure by chunk.
-- Telegram manual trades log fills, proceeds, realized P&L, and cash impact.
+- Manual/local overlay trades should log fills, proceeds, realized P&L, and cash impact.
 - Optional weekly report sections log failures instead of silently passing.
 - Outcome and benchmark price lookups log missing source data.
 
@@ -236,24 +236,17 @@ logs/*.log
 logs/*.err
 ```
 
-## 10. Telegram Bot
+## 10. Telegram
 
-Bot: ASCR-H Bot.
+The public source includes notification helpers, not the private interactive command bot.
 
-Read commands:
+If you build your own command layer:
 
-- `/positions`, `/summary`, `/compare`, `/events`, `/ranking`, `/regime`, `/system`, `/help`
-- Chinese aliases are supported for most commands.
-
-Write commands:
-
-- `/buy TICKER`
-- `/sell TICKER`
-- `/sell all`
-- `/add TICKER`
-- `/remove TICKER`
-
-Trade commands affect `ascr_h.sqlite`. Universe commands affect ASCR config.
+- read-only commands can expose positions, summary, comparison, events, ranking, regime, system, and help views
+- write commands such as buy/sell/add/remove must run through `validate_trade_full()`
+- trade commands should affect only `ascr_h.sqlite`
+- universe commands should affect only ASCR config
+- tokens, chat ids, and localized personal wording must stay local
 
 ## 11. Git Hygiene
 

@@ -85,15 +85,15 @@ Important conceptual tables:
 
 ## Initialization Flow
 
-After code migration, the intended initialization flow is:
+Recommended initialization flow from the repo root:
 
 ```bash
-mkdir -p data logs
-python3 -m ASCR.src.main init-db
-python3 -m ASCR-H.src.main init --cash 10000
+mkdir -p ASCR/data ASCR/logs ASCR-H/data ASCR-H/logs
+cd ASCR
+python3 -m src.main init-db
+cd ../ASCR-H
+python3 -m src.main init --cash 10000
 ```
-
-Until the sanitized code is migrated, treat these commands as the public interface target.
 
 ## Logging Policy
 
@@ -129,4 +129,3 @@ mkdir -p data logs
 ```
 
 This should never affect source code.
-
