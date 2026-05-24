@@ -173,6 +173,58 @@ def test_rankings_fetch_prices_only_for_event_qualified_tickers():
     assert calls == ["MU"]
 
 
+def test_universe_scanner_no_recommendations_can_send_summary():
+    import sys
+    import types
+    from src import universe_scanner
+
+    sent = []
+    fake_pruner = types.ModuleType("src.universe_pruner")
+    fake_pruner.auto_prune = lambda dry_run=True: {"remove": [], "watch": []}
+    fake_pruner.format_telegram_report = lambda result: "unused"
+
+    old_scan_news = universe_scanner.scan_news_for_new_tickers
+    old_scan_events = universe_scanner.scan_events_for_unknown
+    old_evaluate = universe_scanner.evaluate_candidates
+    old_send = universe_scanner.send
+    old_pruner = sys.modules.get("src.universe_pruner")
+    try:
+        universe_scanner.scan_news_for_new_tickers = lambda: []
+        universe_scanner.scan_events_for_unknown = lambda: []
+        universe_scanner.evaluate_candidates = lambda headlines, unknown: []
+        universe_scanner.send = lambda message: sent.append(message) or True
+        sys.modules["src.universe_pruner"] = fake_pruner
+
+        result = universe_scanner.run_scan()
+    finally:
+        universe_scanner.scan_news_for_new_tickers = old_scan_news
+        universe_scanner.scan_events_for_unknown = old_scan_events
+        universe_scanner.evaluate_candidates = old_evaluate
+        universe_scanner.send = old_send
+        if old_pruner is None:
+            sys.modules.pop("src.universe_pruner", None)
+        else:
+            sys.modules["src.universe_pruner"] = old_pruner
+
+    assert result["recommended"] == []
+    assert sent
+    assert "no new suggestions" in sent[0]
+
+
+def test_healthcheck_parse_launchctl_list_exact_labels():
+    from scripts.healthcheck import parse_launchctl_list
+
+    statuses = parse_launchctl_list(
+        "47350\t-9\tcom.ASCR.event-daemon\n"
+        "-\t1\tcom.ASCR.universe-scan\n"
+        "-\t0\tcom.ASCR-H.daily\n"
+    )
+
+    assert statuses["com.ASCR.event-daemon"] == {"pid": "47350", "status": "-9"}
+    assert statuses["com.ASCR.universe-scan"] == {"pid": None, "status": "1"}
+    assert statuses["com.ASCR-H.daily"] == {"pid": None, "status": "0"}
+
+
 def test_event_pipeline_init_creates_query_indexes():
     from src import db, event_pipeline
 
@@ -268,6 +320,8 @@ if __name__ == "__main__":
     test_llm_usage_estimates_and_logs_cost()
     test_gemini_generate_logs_billable_output_tokens()
     test_rankings_fetch_prices_only_for_event_qualified_tickers()
+    test_universe_scanner_no_recommendations_can_send_summary()
+    test_healthcheck_parse_launchctl_list_exact_labels()
     test_event_pipeline_init_creates_query_indexes()
     test_portfolio_instructions_full_book_rotation_does_not_name_error()
     test_db_and_event_pipeline_share_compatible_events_schema()

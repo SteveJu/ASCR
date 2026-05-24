@@ -1,4 +1,4 @@
-# ASCR v1.6
+# ASCR v1.7
 
 AI Supply Chain Stock Opportunity Discovery & Position Exit System.
 
@@ -43,7 +43,7 @@ Continuous monitoring during market hours (9:00 AM - 4:30 PM ET):
 
 ## Scoring Engine
 
-ASCR v1.6 keeps the validated scoring stack and adds calibration reliability hardening plus a cheaper default event-analysis model:
+ASCR v1.7 keeps the validated scoring stack and adds operational health reporting for coverage-aware production checks:
 
 - base dimensions: evidence, asymmetry, momentum, risk
 - event alpha: time-decayed, source-weighted public events with confidence, verdict, conviction, and priced-in adjustment
@@ -53,6 +53,7 @@ ASCR v1.6 keeps the validated scoring stack and adds calibration reliability har
 - stability guard: flat, weight-dispersed calibration surfaces fall back to baseline
 - event-alpha calibration: source/type weights are evaluated with the same IC objective
 - event analysis defaults to Gemini 3.1 Flash Lite via `ASCR_EVENT_MODEL`
+- weekly health checks distinguish latest single-ticker updates from full-universe coverage and flag launchd nonzero last exits
 
 Current production weights:
 

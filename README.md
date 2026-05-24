@@ -1,6 +1,6 @@
 # ASCR: AI Supply Chain Radar
 
-**Version:** v1.6.0 reliability hardening and model/calendar polish
+**Version:** v1.7.0 operational health and quote reporting polish
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](#quick-start)
 [![Status](https://img.shields.io/badge/status-research%20framework-orange)](#current-status)
@@ -342,7 +342,7 @@ See [docs/00-public-release-checklist.md](docs/00-public-release-checklist.md).
 
 ## Current Status
 
-Current public release: v1.6.0
+Current public release: v1.7.0
 
 - sanitized ASCR source tree
 - sanitized ASCR-H source tree
@@ -350,6 +350,8 @@ Current public release: v1.6.0
 - validated scoring engine with calibration and ablation tools
 - calibration stability guard and event-alpha source/type calibration reports
 - Gemini 3.1 Flash Lite default for cost-controlled event analysis
+- coverage-aware weekly health check with launchd failure detection
+- ASCR-H quote-aware position status using live previous close when available
 - live replay backtest with ASCR-H-style execution constraints
 - tests for both systems
 - GitHub Actions CI for compile checks and tests

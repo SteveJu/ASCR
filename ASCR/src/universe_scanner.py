@@ -230,7 +230,6 @@ def run_scan():
     # 4. Prune unhealthy tickers
     try:
         from src.universe_pruner import auto_prune, format_telegram_report
-        from src.telegram_notifier import send
         result = auto_prune(dry_run=True)  # Report only, don't auto-remove
 
         if result["remove"] or result["watch"]:

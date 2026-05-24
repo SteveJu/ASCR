@@ -6,6 +6,7 @@ Tests 3 strategies on 2025-H2 data:
   2. Event-Driven: top-5 by evidence score (what user wants)
   3. Hybrid: event signal priority + momentum tiebreak
 """
+import os
 import sqlite3
 from datetime import datetime
 from collections import defaultdict

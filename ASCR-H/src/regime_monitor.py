@@ -7,6 +7,7 @@ Three kill signals:
 
 Plus rolling performance trackers vs benchmarks.
 """
+import os
 import sqlite3
 import random
 from datetime import datetime, timedelta

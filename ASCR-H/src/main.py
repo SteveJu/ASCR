@@ -6,9 +6,38 @@ import argparse
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src import db, config
+from src.quote_provider import get_live_quote
 from src.utils import get_logger
 
 logger = get_logger("ASCR-H")
+
+
+def _position_status_rows(positions, quote_func=get_live_quote):
+    rows = []
+    total_value = 0
+    total_prev_value = 0
+    for position in positions:
+        quote = quote_func(position["ticker"])
+        qty = position["quantity"]
+        current_value = position.get("current_value", 0) or 0
+        price = quote.get("price") or (current_value / qty if qty else 0)
+        value = qty * price if price > 0 else current_value
+        cost = position["cost_basis"]
+        pnl = (value - cost) / cost * 100 if cost > 0 else 0
+        prev_close = quote.get("previous_close")
+        if prev_close and prev_close > 0 and price > 0:
+            day_pct = (price - prev_close) / prev_close * 100
+            day = f"{day_pct:+.1f}%"
+            total_prev_value += qty * prev_close
+        else:
+            day = "n/a"
+            total_prev_value += value
+        rows.append(
+            f"\n{position['ticker']:8s} {qty:8.1f} ${position['avg_entry_price']:7.2f} "
+            f"${value:9,.0f} {pnl:+7.1f}% {day:>8s}"
+        )
+        total_value += value
+    return rows, total_value, total_prev_value
 
 
 def cmd_init(args):
@@ -285,18 +314,22 @@ def cmd_status(args):
         return
     status = update_portfolio()
     positions = db.get_all_positions()
+    rows, live_pos_value, prev_pos_value = _position_status_rows(positions)
+    positions_value = live_pos_value if positions else status["positions_value"]
+    total_equity = status["cash"] + positions_value
+    prev_total = status["cash"] + prev_pos_value
+    day_pct = (total_equity - prev_total) / prev_total * 100 if prev_total > 0 else 0
+    day_dollar = total_equity - prev_total
     print(f"\n\n💰 Cash: ${status['cash']:,.0f}")
-    print(f"\n📊 Positions: ${status['positions_value']:,.0f} ({status['num_positions']} open)")
-    print(f"\n💎 Total: ${status['total_equity']:,.0f}")
+    print(f"\n📊 Positions: ${positions_value:,.0f} ({status['num_positions']} open)")
+    print(f"\n💎 Total: ${total_equity:,.0f}")
     if positions:
-        print(f"\n\n{'Ticker':8s} {'Qty':>8s} {'Entry':>8s} {'Value':>10s} {'P&L':>8s}")
-        print("-" * 50)
-        for p in positions:
-            cost = p["cost_basis"]
-            value = p.get("current_value", 0)
-            pnl = (value - cost) / cost * 100 if cost > 0 else 0
-            print(f"\n{p['ticker']:8s} {p['quantity']:8.1f} ${p['avg_entry_price']:7.2f} "
-                  f"${value:9,.0f} {pnl:+7.1f}%")
+        print(f"\nDay: {day_pct:+.1f}% (${day_dollar:+,.0f})")
+    if positions:
+        print(f"\n\n{'Ticker':8s} {'Qty':>8s} {'Entry':>8s} {'Value':>10s} {'P&L':>8s} {'Day':>8s}")
+        print("-" * 59)
+        for row in rows:
+            print(row)
 
 
 def cmd_report(args):

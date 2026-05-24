@@ -7,6 +7,7 @@ Strategy:
 4. No profit taking — let winners run
 5. Rotate: sell lowest momentum held, buy highest momentum not held
 """
+import os
 import sqlite3
 from datetime import datetime, timedelta
 from collections import defaultdict

@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.7.0 - Operational Health And Quote Reporting
+
+- Upgraded ASCR weekly health checks to report full-universe coverage separately from latest single-ticker updates
+- Added launchd status parsing that distinguishes long-running services from loaded/idle timer jobs and flags nonzero last exits
+- Fixed the universe scanner no-recommendation path by avoiding a local `send` binding that shadowed the module-level notifier
+- Added ASCR-H quote provider support for current price plus previous session close
+- Updated ASCR-H `status` output to calculate position and portfolio daily change from live quote previous close when available
+- Fixed sanitized ASCR-H backtest/regime modules that used public env-var paths without importing `os`
+- Added regression coverage for healthcheck launchd parsing, universe scanner no-recommendation notifications, and ASCR-H quote-aware status rows
+
+Validation:
+
+- ASCR tests: 45 passed
+- ASCR-H tests: 23 passed
+- Python source compile checks passed
+
 ## v1.6.0 - Reliability And Model/Calendar Polish
 
 - Added calibration stability checks that fall back to baseline when the grid-search surface is flat and weight-dispersed

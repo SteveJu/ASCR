@@ -1,6 +1,6 @@
-# ASCR-H v1.6 Design
+# ASCR-H v1.7 Design
 
-v1.6 hardens executor calendar handling with dynamically generated US equity market holidays.
+v1.7 adds quote-aware position status reporting on top of the v1.6 dynamic US equity market holiday hardening.
 
 ## 1. Design Goal
 
@@ -44,9 +44,23 @@ ASCR-H
     run_intraday_trades()
       -> execute urgent sells only
       -> fill empty slots from Radar buys
+
+  src/quote_provider.py
+    get_live_quote()
+      -> current price
+      -> previous session close when the quote source provides it
+      -> DB fallback for current price only
 ```
 
 ## 3. Execution Flows
+
+### Status Reporting
+
+`python3 -m src.main status` refreshes positions and then formats the local
+portfolio using `quote_provider.get_live_quote()`. Daily change is calculated
+from the live quote's previous close when available. If ASCR's local price DB is
+used as a fallback, ASCR-H intentionally suppresses daily change instead of
+treating the last research DB row as yesterday's close.
 
 ### Daily Run
 

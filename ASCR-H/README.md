@@ -1,8 +1,8 @@
-# ASCR-H v1.6
+# ASCR-H v1.7
 
 Paper trading executor for validating ASCR signals. ASCR-H is the hands; ASCR is the brain.
 
-v1.6 hardens executor calendar handling with dynamically generated US equity market holidays.
+v1.7 adds quote-aware position status reporting on top of the v1.6 dynamic US equity market holiday hardening.
 
 The production path is intentionally simple:
 
@@ -35,6 +35,7 @@ Main modules:
 | State | `db`, `portfolio`, `config` |
 | Validation | `decision_logger`, `outcome_evaluator`, `decision_quality`, `strategy_health`, `degradation_detector`, `validation_report` |
 | Reporting | `telegram_notifier`, `weekly_report`, `report` |
+| Quotes | `quote_provider` |
 | Regime | `regime_monitor` |
 | Legacy / research | `momentum_live`, `momentum_backtester`, `historical_backtester`, `strategy_backtest`, `execution_engine`, `broker_simulator`, `signal_reader`, `shadow_tracker` |
 
@@ -109,6 +110,9 @@ Runtime state is intentionally local and ignored by Git:
 - `__pycache__/`, `*.pyc` - Python cache
 
 Runtime numbers are operational state, not source truth. Use `python3 -m src.main status` for current local values.
+The status command uses `quote_provider.get_live_quote()` so per-position daily
+change comes from a live quote's previous close when available, not from a
+potentially stale ASCR research DB row.
 
 ## Logging
 
