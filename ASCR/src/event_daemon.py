@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src import config, db
+from src.market_calendar import is_us_market_holiday
 from src.utils import get_logger
 
 logger = get_logger("event_daemon")
@@ -45,21 +46,14 @@ _signal.signal(_signal.SIGTERM, _handle_signal)
 _signal.signal(_signal.SIGINT, _handle_signal)
 
 
-# US market holidays 2026
-_US_HOLIDAYS_2026 = {
-    "2026-01-01", "2026-01-19", "2026-02-16", "2026-04-03",
-    "2026-05-25", "2026-06-19", "2026-07-03", "2026-09-07",
-    "2026-11-26", "2026-12-25",
-}
-
-def _is_active_hours() -> bool:
+def _is_active_hours(now=None) -> bool:
     """Check if we should be polling (market hours +/- buffer)."""
-    now = datetime.now()
+    now = now or datetime.now()
     # Skip weekends
     if now.weekday() >= 5:
         return False
     # Skip holidays
-    if now.strftime("%Y-%m-%d") in _US_HOLIDAYS_2026:
+    if is_us_market_holiday(now.date()):
         return False
     # Active window: 9:00 AM - 4:30 PM ET
     start_min = (MARKET_OPEN_H * 60 + MARKET_OPEN_M) - PRE_MARKET_BUFFER

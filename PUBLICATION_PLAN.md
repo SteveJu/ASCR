@@ -2,7 +2,7 @@
 
 Goal: publish ASCR as a usable open-source project that combines ASCR, the signal brain, and ASCR-H, the paper-trading hands, while keeping all private runtime data and credentials out of the public repository.
 
-Current status: v1.4.0 has been published with sanitized ASCR, ASCR-H, backtests, docs, sample configs, tests, the validated scoring engine, and the live replay backtest.
+Current status: v1.6.0 has been published with sanitized ASCR, ASCR-H, backtests, docs, sample configs, tests, the validated scoring engine, the live replay backtest, calibration stability checks, dynamic market calendars, cost-controlled Gemini event analysis defaults, CI, license, and sample outputs.
 
 ## Phase 1: Public Shell
 
@@ -137,6 +137,21 @@ rg -n "/Users/|/home/|C:\\\\"
 find . -name ".env" -o -name "*.sqlite*" -o -name "*.db"
 git status --short
 ```
+
+## Phase 6: Reliability And Trust Polish
+
+Status: complete in v1.6.0.
+
+Deliverables:
+
+- calibration stability fallback for flat grid-search surfaces
+- event-alpha source/type calibration reports
+- dynamic US market holiday generation for ASCR and ASCR-H
+- LLM retry with exponential backoff
+- GitHub Actions compile and test workflow
+- MIT license
+- API-key-free examples
+- QQQ benchmark and estimated net-of-cost columns in public backtest summaries
 
 ## Public Positioning
 

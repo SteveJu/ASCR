@@ -9,23 +9,10 @@ Rules:
 """
 import sqlite3
 from datetime import datetime, timedelta, time as dtime
+from src.market_calendar import is_us_market_holiday
 from src.utils import get_logger
 
 logger = get_logger("trading_rules")
-
-# US market holidays 2026 (NYSE)
-US_HOLIDAYS_2026 = {
-    "2026-01-01",  # New Year's Day
-    "2026-01-19",  # MLK Day
-    "2026-02-16",  # Presidents' Day
-    "2026-04-03",  # Good Friday
-    "2026-05-25",  # Memorial Day
-    "2026-06-19",  # Juneteenth
-    "2026-07-03",  # Independence Day (observed)
-    "2026-09-07",  # Labor Day
-    "2026-11-26",  # Thanksgiving
-    "2026-12-25",  # Christmas
-}
 
 
 def is_trading_day(dt: datetime = None) -> tuple[bool, str]:
@@ -36,7 +23,7 @@ def is_trading_day(dt: datetime = None) -> tuple[bool, str]:
         day = "Saturday" if dt.weekday() == 5 else "Sunday"
         return False, f"weekend ({day})"
     date_str = dt.strftime("%Y-%m-%d")
-    if date_str in US_HOLIDAYS_2026:
+    if is_us_market_holiday(dt.date()):
         return False, f"market holiday ({date_str})"
     return True, "trading day"
 
@@ -53,7 +40,7 @@ def is_market_open(dt: datetime = None) -> tuple[bool, str]:
 
     # Holiday
     date_str = dt.strftime("%Y-%m-%d")
-    if date_str in US_HOLIDAYS_2026:
+    if is_us_market_holiday(dt.date()):
         return False, f"market holiday ({date_str})"
 
     # Market hours: 9:30 AM - 4:00 PM ET
@@ -75,7 +62,7 @@ def next_market_open(dt: datetime = None) -> datetime:
     candidate = dt.replace(hour=9, minute=30, second=0, microsecond=0)
     if dt.time() >= dtime(9, 30):
         candidate += timedelta(days=1)
-    while candidate.weekday() >= 5 or candidate.strftime("%Y-%m-%d") in US_HOLIDAYS_2026:
+    while candidate.weekday() >= 5 or is_us_market_holiday(candidate.date()):
         candidate += timedelta(days=1)
     return candidate
 
@@ -230,7 +217,7 @@ def check_settlement(ticker: str, side: str, db_path: str,
         check = sell_date
         while check.strftime("%Y-%m-%d") < today:
             check += timedelta(days=1)
-            if check.weekday() < 5 and check.strftime("%Y-%m-%d") not in US_HOLIDAYS_2026:
+            if check.weekday() < 5 and not is_us_market_holiday(check.date()):
                 bdays += 1
         if bdays < 1:  # T+1
             unsettled += sell["proceeds"]

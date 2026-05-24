@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.6.0 - Reliability And Model/Calendar Polish
+
+- Added calibration stability checks that fall back to baseline when the grid-search surface is flat and weight-dispersed
+- Added event-alpha source/type calibration reports using the same IC plus top/bottom spread objective
+- Replaced hardcoded 2026 market holidays with dynamically generated US market holidays in ASCR and ASCR-H
+- Added retry with exponential backoff for Gemini analysis and Sonnet fallback calls
+- Set event analysis to Gemini 3.1 Flash Lite by default, with `ASCR_EVENT_MODEL` override
+- Added GitHub Actions CI for compile checks plus ASCR and ASCR-H tests
+- Added MIT license and API-key-free sample outputs under `examples/`
+- Updated public backtest tables with QQQ benchmark and estimated net-of-cost return columns
+
+Validation:
+
+- ASCR tests: 43 passed
+- ASCR-H tests: 22 passed
+- Python source compile checks passed
+
 ## v1.4.0 - Live Replay Backtest
 
 - Aligned public design/setup docs with the v1.3 validated scoring release

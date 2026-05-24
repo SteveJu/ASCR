@@ -27,6 +27,16 @@ from src.utils import get_logger
 
 logger = get_logger("event_pipeline")
 
+LLM_RETRY_ATTEMPTS = max(1, int(os.getenv("ASCR_LLM_RETRIES", "3")))
+LLM_RETRY_BASE_SECONDS = max(
+    0.0,
+    float(os.getenv("ASCR_LLM_RETRY_BASE_SECONDS", "1.5")),
+)
+LLM_RETRY_MAX_SECONDS = max(
+    LLM_RETRY_BASE_SECONDS,
+    float(os.getenv("ASCR_LLM_RETRY_MAX_SECONDS", "12")),
+)
+
 # Load API key
 def _get_client():
     from dotenv import load_dotenv
@@ -35,6 +45,30 @@ def _get_client():
     if not key:
         raise ValueError("ANTHROPIC_API_KEY not set")
     return Anthropic(api_key=key)
+
+
+def _with_retry(label: str, fn, attempts: int = None):
+    """Run a transient external call with exponential backoff."""
+    attempts = attempts or LLM_RETRY_ATTEMPTS
+    last_error = None
+    for attempt in range(attempts):
+        try:
+            result = fn()
+            if result is None:
+                raise RuntimeError(f"{label} returned no result")
+            return result
+        except Exception as exc:
+            last_error = exc
+            if attempt >= attempts - 1:
+                break
+            sleep_s = min(LLM_RETRY_MAX_SECONDS, LLM_RETRY_BASE_SECONDS * (2 ** attempt))
+            logger.warning(
+                f"{label} failed (attempt {attempt + 1}/{attempts}); "
+                f"retrying in {sleep_s:.1f}s: {exc}"
+            )
+            if sleep_s > 0:
+                time.sleep(sleep_s)
+    raise RuntimeError(f"{label} failed after {attempts} attempts: {last_error}")
 
 # ─── Database ───
 
@@ -102,7 +136,13 @@ def fetch_news(max_per_query=20) -> list:
     for query in SECTOR_QUERIES:
         url = f"https://news.google.com/rss/search?q={quote(query)}&hl=en-US&gl=US&ceid=US:en"
         try:
-            feed = feedparser.parse(url)
+            resp = requests.get(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; ASCR/1.0)"},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            feed = feedparser.parse(resp.content)
             for entry in feed.entries[:max_per_query]:
                 title = entry.get("title", "").strip()
                 # Dedup by title similarity
@@ -526,18 +566,18 @@ def filter_headlines(articles: list) -> list:
 
 def analyze_article(article: dict) -> dict | None:
     """Use Gemini to deeply analyze a relevant article (was Sonnet)."""
-    try:
+    extra = ""
+    if article.get("filter_ticker"):
+        extra = f"Pre-filter suggested ticker: {article['filter_ticker']}\nReason: {article.get('filter_reason','')}"
+
+    def _call_gemini():
         from src.gemini_client import analyze_headline
-        extra = ""
-        if article.get("filter_ticker"):
-            extra = f"Pre-filter suggested ticker: {article['filter_ticker']}\nReason: {article.get('filter_reason','')}"
 
         result = analyze_headline(
             headline=article["title"],
             source=article.get("source_query", ""),
             extra=extra,
         )
-
         if result:
             usage = result.get("_usage", {})
             result["_usage"] = {
@@ -545,14 +585,17 @@ def analyze_article(article: dict) -> dict | None:
                 "output": usage.get("output", 0),
             }
         return result
+
+    try:
+        return _with_retry("Gemini analysis", _call_gemini)
     except Exception as e:
-        logger.warning(f"Gemini analysis error: {e}")
-        # Fallback to Anthropic Sonnet
-        try:
-            return _analyze_article_sonnet(article)
-        except Exception as e2:
-            logger.error(f"Both Gemini and Sonnet failed: {e2}")
-            return None
+        logger.warning(f"Gemini analysis failed after retries; trying Sonnet fallback: {e}")
+
+    try:
+        return _with_retry("Sonnet fallback", lambda: _analyze_article_sonnet(article))
+    except Exception as e:
+        logger.error(f"Both Gemini and Sonnet failed after retries: {e}")
+        return None
 
 
 def _analyze_article_sonnet(article: dict) -> dict | None:

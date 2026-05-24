@@ -1,6 +1,6 @@
 # ASCR: AI Supply Chain Radar
 
-**Version:** v1.4.0 live replay backtest
+**Version:** v1.6.0 reliability hardening and model/calendar polish
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](#quick-start)
 [![Status](https://img.shields.io/badge/status-research%20framework-orange)](#current-status)
@@ -139,6 +139,7 @@ ASCR/
   backtests/       # reproducible historical validation code
   config/          # public example configs
   docs/            # setup, architecture, API, DB/logs, backtesting notes
+  examples/        # API-key-free sample outputs
   .env.example     # local secrets template
   README.md
 ```
@@ -262,15 +263,19 @@ The `backtests/` package tests whether public filings, historical prices, and LL
 
 Headline research results:
 
-| Version | Universe | Rebalance | Return | Sharpe | Max Drawdown | Win Rate |
-|---|---|---:|---:|---:|---:|---:|
-| V1 | Fixed universe | Daily | +170% | 2.74 | -19% | n/a |
-| V2 | Dynamic universe | Weekly | +115% | 2.26 | -22% | n/a |
-| V3 Weekly | Enriched events + insider signals | Weekly | +173% | 2.92 | -19% | 70% |
-| V3 Daily | Enriched events + insider signals | Daily | +260% | 3.55 | -17% | 64% |
-| Live Replay | Blank memory + ASCR-H-style execution | Daily | +217% | 3.25 | -21% | n/a |
+| Version | Universe | Rebalance | Gross Return | Est. Net Return | QQQ Benchmark | Sharpe | Max Drawdown | Win Rate |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| V1 | Fixed universe | Daily | +170% | ~+160% | +39.3% | 2.74 | -19% | n/a |
+| V2 | Dynamic universe | Weekly | +115% | ~+108% | +39.3% | 2.26 | -22% | n/a |
+| V3 Weekly | Enriched events + insider signals | Weekly | +173% | ~+165% | +39.3% | 2.92 | -19% | 70% |
+| V3 Daily | Enriched events + insider signals | Daily | +260% | ~+245% | +39.3% | 3.55 | -17% | 64% |
+| Live Replay | Blank memory + ASCR-H-style execution | Daily | +217% | ~+207% | +39.3% | 3.25 | -21% | n/a |
+| QQQ benchmark | Buy and hold QQQ | n/a | +39.3% | +39.3% | +39.3% | n/a | n/a | n/a |
 
 `Live Replay` is the stricter baseline because it starts with no memory, applies an execution lag, imports ASCR trading exclusions, and lets ASCR-H-style paper rules reject orders.
+Estimated net return is an approximate public-reporting haircut for commissions,
+spread, and slippage. It is not a substitute for rerunning the backtest with your
+own cost model.
 
 The recommended source split is:
 
@@ -292,6 +297,12 @@ ASCR includes a validated scoring stack:
 - `feedback_alpha`: optional ASCR-H outcome feedback with sample-size shrinkage
 - `scoring_calibration.py`: weight search against score/forward-return pairs
 - `scoring_ablation.py`: baseline vs calibrated vs feedback walk-forward comparison
+
+Calibration reports include a stability guard. If the top grid candidates have
+effectively tied objective scores but materially different weights, the selected
+profile falls back to the current baseline. The same calibration path also
+evaluates event-alpha `source_weights` and `event_type_weights`; config changes
+remain manual after review.
 
 The default production weights are pinned to the strict as-of ablation winner:
 
@@ -331,24 +342,28 @@ See [docs/00-public-release-checklist.md](docs/00-public-release-checklist.md).
 
 ## Current Status
 
-Current public release:
+Current public release: v1.6.0
 
 - sanitized ASCR source tree
 - sanitized ASCR-H source tree
 - sanitized backtest source tree
 - validated scoring engine with calibration and ablation tools
+- calibration stability guard and event-alpha source/type calibration reports
+- Gemini 3.1 Flash Lite default for cost-controlled event analysis
 - live replay backtest with ASCR-H-style execution constraints
 - tests for both systems
+- GitHub Actions CI for compile checks and tests
+- API-key-free sample outputs in `examples/`
 - sample universe and config templates
 - docs for setup, APIs, DB/logs, and backtesting
+- MIT license
 - no private runtime state or secrets
 
 Planned improvements:
 
 - cleaner CLI entrypoints for first-time users
 - public-safe Telegram bot rewrite
-- example outputs and screenshots
-- GitHub Actions test workflow
+- screenshots and richer report samples
 
 ## Contributing
 
@@ -362,6 +377,10 @@ Useful contributions include:
 - making ASCR-H execution rules easier to audit
 
 Please do not open issues or PRs containing real API keys, Telegram tokens, screenshots with chat ids, or private account state.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
 
 ## Disclaimer
 

@@ -24,15 +24,18 @@ The public code focuses on:
 
 These are historical research results from the private research branch. They are not a promise of future returns.
 
-| Version | Universe | Rebalance | Return | Sharpe | Max DD | Win Rate |
-|---|---|---:|---:|---:|---:|---:|
-| V1 | Fixed 46 tickers | Daily | +170% | 2.74 | -19% | n/a |
-| V2 | Dynamic universe | Weekly | +115% | 2.26 | -22% | n/a |
-| V3 Weekly | Enriched events + insider signals | Weekly | +173% | 2.92 | -19% | 70% |
-| V3 Daily | Enriched events + insider signals | Daily | +260% | 3.55 | -17% | 64% |
-| Live Replay | Blank memory + ASCR-H-style reject rules | Daily | +217% | 3.25 | -21% | n/a |
+| Version | Universe | Rebalance | Gross Return | Est. Net Return | QQQ Benchmark | Sharpe | Max DD | Win Rate |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| V1 | Fixed 46 tickers | Daily | +170% | ~+160% | +39.3% | 2.74 | -19% | n/a |
+| V2 | Dynamic universe | Weekly | +115% | ~+108% | +39.3% | 2.26 | -22% | n/a |
+| V3 Weekly | Enriched events + insider signals | Weekly | +173% | ~+165% | +39.3% | 2.92 | -19% | 70% |
+| V3 Daily | Enriched events + insider signals | Daily | +260% | ~+245% | +39.3% | 3.55 | -17% | 64% |
+| Live Replay | Blank memory + ASCR-H-style reject rules | Daily | +217% | ~+207% | +39.3% | 3.25 | -21% | n/a |
+| QQQ benchmark | Buy and hold QQQ | n/a | +39.3% | +39.3% | +39.3% | n/a | n/a | n/a |
 
 `Live Replay` is the stricter mode and should be treated as the more realistic research baseline. It starts with no event memory, applies a one-trading-day execution lag, imports ASCR trading exclusions, and lets ASCR-H-style paper rules block orders.
+Estimated net return is an approximate public-reporting haircut for commissions,
+spread, and slippage. Users should rerun with their own explicit cost model.
 
 ## Public Safety
 

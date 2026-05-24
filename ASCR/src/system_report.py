@@ -228,7 +228,7 @@ def generate_system_report() -> str:
     lines.append("")
     lines.append("LLM Processing:")
     lines.append("  \u2022 Filter: Haiku 4.5 (binary relevance)")
-    lines.append("  \u2022 Analysis: Gemini 3.1 Pro \u2192 2.5 Flash \u2192 Sonnet (fallback)")
+    lines.append("  \u2022 Analysis: Gemini 3.1 Flash Lite \u2192 2.5 Flash \u2192 Sonnet (fallback)")
     lines.append("  \u2022 Universe eval: Opus 4.6 (weekly)")
     lines.append("  \u2022 Monthly review: Opus 4.6 (experience tracker)")
     lines.append("  \u2022 Cap: 30 LLM calls/pipeline run")
@@ -323,12 +323,12 @@ def generate_system_report() -> str:
 
     # ── Cost ──
     lines.append("<b>═══ MONTHLY COST ESTIMATE ═══</b>")
-    lines.append("  Gemini 3.1 Pro (30/day): ~$1.73")
+    lines.append("  Gemini 3.1 Flash Lite (30/day): ~$0.25")
     lines.append("  Gemini 2.5 Flash (fallback): ~$0.06")
     lines.append("  Haiku 4.5 (filter): ~$0.01")
     lines.append("  Opus 4.6 (weekly+monthly): ~$0.20")
     lines.append("  Sonnet 4.6 (fallback only): ~$0.00")
-    lines.append("  <b>Total: ~$2.00/month</b>")
+    lines.append("  <b>Total: ~$0.52/month</b>")
     lines.append("")
 
     # ── Tech Stack ──

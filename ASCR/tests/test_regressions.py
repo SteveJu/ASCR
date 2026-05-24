@@ -66,6 +66,7 @@ def test_llm_usage_estimates_and_logs_cost():
     assert calls[0]["input_tokens"] == 1000
     assert calls[0]["output_tokens"] == 2000
     assert round(calls[0]["cost_usd"], 6) == 0.0053
+    assert round(llm_usage.estimate_cost("gemini-3.1-flash-lite", 1000, 2000), 6) == 0.00325
 
 
 def test_gemini_generate_logs_billable_output_tokens():

@@ -16,7 +16,9 @@ from src.trading_rules import (
     check_pdt_rule,
     is_market_open,
     is_trading_day,
+    next_market_open,
 )
+from src.market_calendar import us_market_holidays
 
 
 def _make_orders_db():
@@ -50,9 +52,13 @@ def _insert_order(path, date, ticker, side, quantity=1, price=100):
 def test_market_calendar_rules():
     assert is_trading_day(datetime(2026, 5, 23, 10, 0))[0] is False
     assert is_trading_day(datetime(2026, 5, 25, 10, 0))[0] is False
+    assert is_trading_day(datetime(2027, 3, 26, 10, 0))[0] is False
     assert is_market_open(datetime(2026, 5, 26, 9, 29))[0] is False
     assert is_market_open(datetime(2026, 5, 26, 9, 30))[0] is True
     assert is_market_open(datetime(2026, 5, 26, 16, 0))[0] is False
+    assert next_market_open(datetime(2027, 3, 25, 16, 1)).date().isoformat() == "2027-03-29"
+    holidays_2027 = {day.isoformat() for day in us_market_holidays(2027)}
+    assert "2027-03-26" in holidays_2027
     print("OK market calendar rules")
 
 

@@ -1,0 +1,50 @@
+{
+  "generated_at": "2026-05-10T17:30:00",
+  "data_source": "sample",
+  "events": [
+    {
+      "ticker": "MU",
+      "source": "sec",
+      "event_type": "major_contract",
+      "headline": "Micron signs multi-year AI memory supply agreement",
+      "verdict": "BUY",
+      "conviction": "HIGH",
+      "confidence": 0.86,
+      "evidence_delta": 7,
+      "asymmetry_delta": 3,
+      "risk_delta": 0,
+      "priced_in_pct": 35,
+      "summary": "Material demand signal for HBM and data-center memory exposure.",
+      "bull_case": [
+        "Contract structure supports forward visibility",
+        "HBM supply remains structurally tight"
+      ],
+      "bear_case": [
+        "Pricing benefit may already be partly reflected",
+        "Memory cycles can turn quickly if hyperscaler orders slow"
+      ]
+    },
+    {
+      "ticker": "ETN",
+      "source": "news",
+      "event_type": "guidance_raise",
+      "headline": "Eaton raises data-center power equipment outlook",
+      "verdict": "BUY",
+      "conviction": "MEDIUM",
+      "confidence": 0.73,
+      "evidence_delta": 5,
+      "asymmetry_delta": 1,
+      "risk_delta": 1,
+      "priced_in_pct": 55,
+      "summary": "Confirms durable AI infrastructure power demand, though valuation is less asymmetric.",
+      "bull_case": [
+        "Grid and power-distribution bottlenecks extend demand cycle",
+        "Backlog quality appears broad-based"
+      ],
+      "bear_case": [
+        "Mega-cap industrial multiple leaves less room for upside",
+        "Execution risk rises if capacity expansion slips"
+      ]
+    }
+  ]
+}

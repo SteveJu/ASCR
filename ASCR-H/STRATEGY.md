@@ -67,7 +67,7 @@ Intraday sells should only execute urgent instructions such as stop-loss events.
 ASCR-H enforces trading constraints before any simulated order:
 
 - Market hours only.
-- NYSE holidays skipped.
+- US equity market holidays generated dynamically.
 - PDT protection for sub-$25K account.
 - T+1 settlement warning.
 - Duplicate same-day buy block.

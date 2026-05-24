@@ -7,6 +7,7 @@ logger = get_logger("llm_usage")
 MODEL_PRICING = {
     # Google Gemini
     "gemini-3.1-pro-preview": {"input": 2.00, "output": 12.00},
+    "gemini-3.1-flash-lite": {"input": 0.25, "output": 1.50},
     "gemini-2.5-flash": {"input": 0.30, "output": 2.50},
     "gemini-2.5-flash-lite": {"input": 0.10, "output": 0.40},
     # Anthropic Claude
@@ -17,6 +18,7 @@ MODEL_PRICING = {
 
 TIER_BY_MODEL = {
     "gemini-3.1-pro-preview": "standard",
+    "gemini-3.1-flash-lite": "cheap",
     "gemini-2.5-flash": "standard",
     "gemini-2.5-flash-lite": "cheap",
     "claude-haiku-4-5": "cheap",

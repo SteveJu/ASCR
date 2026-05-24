@@ -20,15 +20,19 @@ The public `backtests/` package is a sanitized migration of the research backtes
 
 Headline results:
 
-| Version | Universe | Rebalance | Return | Sharpe | Max Drawdown | Win Rate |
-|---|---|---:|---:|---:|---:|---:|
-| V1 | Fixed universe | Daily | +170% | 2.74 | -19% | n/a |
-| V2 | Dynamic universe | Weekly | +115% | 2.26 | -22% | n/a |
-| V3 Weekly | Enriched events + insider signals | Weekly | +173% | 2.92 | -19% | 70% |
-| V3 Daily | Enriched events + insider signals | Daily | +260% | 3.55 | -17% | 64% |
-| Live Replay | Blank memory + ASCR/ASCR-H style execution | Daily | +217% | 3.25 | -21% | n/a |
+| Version | Universe | Rebalance | Gross Return | Est. Net Return | QQQ Benchmark | Sharpe | Max Drawdown | Win Rate |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| V1 | Fixed universe | Daily | +170% | ~+160% | +39.3% | 2.74 | -19% | n/a |
+| V2 | Dynamic universe | Weekly | +115% | ~+108% | +39.3% | 2.26 | -22% | n/a |
+| V3 Weekly | Enriched events + insider signals | Weekly | +173% | ~+165% | +39.3% | 2.92 | -19% | 70% |
+| V3 Daily | Enriched events + insider signals | Daily | +260% | ~+245% | +39.3% | 3.55 | -17% | 64% |
+| Live Replay | Blank memory + ASCR/ASCR-H style execution | Daily | +217% | ~+207% | +39.3% | 3.25 | -21% | n/a |
+| QQQ benchmark | Buy and hold QQQ | n/a | +39.3% | +39.3% | +39.3% | n/a | n/a | n/a |
 
 The Live Replay result is the stricter comparison point. It starts with no positions, no event memory, and no prior sell history. Events become visible only after an execution lag, ASCR-style ranking generates intent, and ASCR-H-style paper rules can reject orders.
+Estimated net return is an approximate public-reporting haircut for commissions,
+spread, and slippage; rerun the package with your own cost assumptions before
+treating any figure as decision-grade.
 
 ## Why V1 Is Weaker Evidence
 

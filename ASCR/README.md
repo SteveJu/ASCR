@@ -1,4 +1,4 @@
-# ASCR v1.4
+# ASCR v1.6
 
 AI Supply Chain Stock Opportunity Discovery & Position Exit System.
 
@@ -35,7 +35,7 @@ Continuous monitoring during market hours (9:00 AM - 4:30 PM ET):
 | **Core** | `recommender` (ranking engine), `scoring`, `scoring_calibration`, `scoring_ablation`, `scoring_feedback`, `rating`, `config` |
 | **Data** | `event_pipeline`, `price_fetcher`, `sec_fetcher`, `insider_tracker`, `news_fetcher` |
 | **Analysis** | `analysis_engine`, `event_daemon`, `fast_scan`, `discovery_engine`, `sector_discovery` |
-| **LLM** | `gemini_client` (Gemini primary → Flash fallback), `llm_usage` (usage/cost logging), `event_classifier`, `model_router` |
+| **LLM** | `gemini_client` (Gemini 3.1 Flash Lite default → Flash fallback), `llm_usage` (usage/cost logging), `event_classifier`, `model_router` |
 | **Risk** | `bubble_detector` (3-level circuit breaker), `market_regime`, `exit_rules`, `universe_pruner` |
 | **Intelligence** | `supply_chain` (graph propagation), `leveraged_etf_monitor`, `experience_tracker` |
 | **Output** | `telegram_notifier`, `report_generator`, `system_report` |
@@ -43,13 +43,16 @@ Continuous monitoring during market hours (9:00 AM - 4:30 PM ET):
 
 ## Scoring Engine
 
-ASCR v1.4 keeps the validated scoring stack:
+ASCR v1.6 keeps the validated scoring stack and adds calibration reliability hardening plus a cheaper default event-analysis model:
 
 - base dimensions: evidence, asymmetry, momentum, risk
 - event alpha: time-decayed, source-weighted public events with confidence, verdict, conviction, and priced-in adjustment
 - feedback alpha: optional ASCR-H outcome feedback with sample-size shrinkage and hard caps
 - calibration: grid search against score/forward-return pairs
 - ablation: strict as-of comparison of baseline, calibrated, feedback, and combined scoring variants
+- stability guard: flat, weight-dispersed calibration surfaces fall back to baseline
+- event-alpha calibration: source/type weights are evaluated with the same IC objective
+- event analysis defaults to Gemini 3.1 Flash Lite via `ASCR_EVENT_MODEL`
 
 Current production weights:
 
@@ -69,13 +72,32 @@ python3 -m src.scoring_calibration
 python3 -m src.scoring_ablation
 ```
 
+Calibration reports include a stability guard: if the top grid candidates have
+effectively tied objective scores but materially different weights, the selected
+profile falls back to the current baseline. The same report also evaluates
+event-alpha `source_weights` and `event_type_weights` with rank IC plus top/bottom
+spread; config changes remain manual after review.
+
+## Backtest Snapshot
+
+Public headline research table, with QQQ measured over the 2025-05-13 to
+2026-05-13 replay window. Estimated net return is a rough transaction-cost
+haircut, not a substitute for rerunning with your own assumptions.
+
+| Version | Gross Return | Est. Net Return | QQQ Benchmark | Max DD |
+|---|---:|---:|---:|---:|
+| V3 Daily | +260% | ~+245% | +39.3% | -17% |
+| Live Replay | +217% | ~+207% | +39.3% | -21% |
+| QQQ benchmark | +39.3% | +39.3% | +39.3% | n/a |
+
 ## Event-Driven Ranking
 
 - Each event analyzed by LLM → verdict (STRONG_BUY/BUY/HOLD/AVOID/SELL) + conviction (HIGH/MEDIUM/LOW)
 - Ranking: `verdict_score` > `ev_score` > `evidence`
 - Event window: 30 days, score cap: avg × min(count, 8)
 - Minimum `ev_score ≥ 5` required for recommendation
-- Event-type multipliers: SEC contract 1.2× > earnings 1.1× > news 1.0× > Reddit 0.8×
+- Event source/type multipliers are reviewed through `src.scoring_calibration`
+  instead of being treated as fixed intuition.
 
 ## Backtest Source Profiles
 
@@ -125,6 +147,14 @@ Telegram notification support is optional. The first public ASCR source drop doe
 - **Experience**: `data/experience.sqlite` (signal accuracy tracking)
 - **Leveraged ETF**: `data/leveraged_etf_state.json`
 
+## Examples
+
+The repository-level `examples/` directory contains API-key-free sample outputs:
+
+- `scoring_result_sample.json`
+- `event_pipeline_output_sample.json`
+- `backtest_equity_curve_sample.csv`
+
 ## AI API Usage & Cost
 
 All successful Gemini and Anthropic calls are logged to `llm_calls` with model, purpose,
@@ -148,3 +178,8 @@ export GEMINI_API_KEY=...
 # Optional: cp config/telegram.example.yaml config/telegram.yaml
 python3 -m src.main run-daily
 ```
+
+## Quality Gate
+
+Repository CI runs `compileall` plus ASCR and ASCR-H tests on every push and pull
+request.

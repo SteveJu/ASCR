@@ -1,4 +1,6 @@
-# ASCR-H Design
+# ASCR-H v1.6 Design
+
+v1.6 hardens executor calendar handling with dynamically generated US equity market holidays.
 
 ## 1. Design Goal
 
@@ -112,7 +114,7 @@ Implemented in `src/trading_rules.py`.
 | Rule | Effect |
 |---|---|
 | Market hours | Blocks trades outside regular market hours |
-| Trading day | Blocks weekends and 2026 NYSE holidays |
+| Trading day | Blocks weekends and dynamically generated US market holidays |
 | PDT | Blocks normal same-day round trips for sub-$25K accounts |
 | T+1 settlement | Allows but flags unsettled proceeds |
 | Duplicate buy | Blocks repeat buys in the same ticker on same date |

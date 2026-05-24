@@ -1,6 +1,8 @@
-# ASCR-H
+# ASCR-H v1.6
 
 Paper trading executor for validating ASCR signals. ASCR-H is the hands; ASCR is the brain.
+
+v1.6 hardens executor calendar handling with dynamically generated US equity market holidays.
 
 The production path is intentionally simple:
 
@@ -72,7 +74,7 @@ Rules are enforced in `src/trading_rules.py`.
 | Rule | Behavior |
 |---|---|
 | Market hours | Trades only during Mon-Fri 09:30-16:00 ET |
-| Holidays | 2026 NYSE holidays are skipped |
+| Holidays | US equity market holidays are generated dynamically |
 | PDT | Sub-$25K account avoids normal same-day round trips |
 | T+1 settlement | Recent sell proceeds are flagged while unsettled |
 | Duplicate buy | Max one buy per ticker per day |

@@ -28,6 +28,8 @@ def _spearman_corr(x: list, y: list) -> float:
     """Compute Spearman rank correlation coefficient."""
     if len(x) != len(y) or len(x) < 3:
         return 0.0
+    if len(set(x)) < 2 or len(set(y)) < 2:
+        return 0.0
 
     n = len(x)
 

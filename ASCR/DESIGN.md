@@ -1,4 +1,4 @@
-# ASCR v1.4 — Public Design Document
+# ASCR v1.6 — Public Design Document
 
 ## 1. Philosophy
 
@@ -46,11 +46,17 @@ Fetch (Python, free)
 
 ### Scoring
 
-ASCR v1.4 uses a three-layer scoring stack:
+ASCR v1.6 uses a three-layer scoring stack:
 
 1. Base factor context: evidence, asymmetry, momentum, risk.
 2. Event alpha: fresh structured events adjust evidence/asymmetry/risk using source quality, event type, confidence, verdict, conviction, novelty, decay, and priced-in discount.
 3. Feedback alpha: optional ASCR-H outcome feedback adds small bounded adjustments with sample-size shrinkage.
+
+v1.6 keeps the calibration stability guard: if the top grid candidates have
+effectively tied objective scores but materially different weights, the selected
+profile falls back to the current baseline. Event-alpha source and event-type
+weights are evaluated through the same IC/spread calibration path. Event analysis
+defaults to `gemini-3.1-flash-lite`, overridable with `ASCR_EVENT_MODEL`.
 
 Current public production weights:
 
@@ -149,7 +155,7 @@ The feedback layer is bounded and validated strict as-of: each historical scorin
 | Task | Model | Fallback | Cost |
 |------|-------|----------|------|
 | Headline filter | Haiku 4.5 | Python-only if small batch | Logged in `llm_calls` |
-| Event analysis | Gemini primary | Flash → Sonnet fallback | Logged in `llm_calls` |
+| Event analysis | Gemini 3.1 Flash Lite | Flash → Sonnet fallback | Logged in `llm_calls` |
 | Event alert translation | Gemini Flash Lite | Flash | Logged in `llm_calls` |
 | Weekly universe eval | Opus 4.6 | — | Logged in `llm_calls` |
 | Monthly review | Opus 4.6 | — | Logged in `llm_calls` |

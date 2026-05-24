@@ -1,4 +1,5 @@
 """Contract tests for event daemon storage behavior."""
+from datetime import datetime
 import os
 import sqlite3
 import sys
@@ -90,7 +91,22 @@ def test_get_seen_hashes_only_reads_today():
     assert seen == {"today-hash"}
 
 
+def test_market_hours_use_dynamic_us_market_holidays():
+    from src import event_daemon
+    from src.market_calendar import us_market_holidays
+
+    assert event_daemon._is_active_hours(datetime(2026, 5, 22, 9, 0))
+    assert not event_daemon._is_active_hours(datetime(2026, 5, 22, 8, 59))
+    assert not event_daemon._is_active_hours(datetime(2026, 5, 23, 12, 0))
+    assert not event_daemon._is_active_hours(datetime(2027, 3, 26, 12, 0))
+
+    holidays_2027 = {day.isoformat() for day in us_market_holidays(2027)}
+    assert "2027-03-26" in holidays_2027  # Good Friday, not a federal holiday.
+    assert "2027-10-11" not in holidays_2027  # Columbus Day is open for US equities.
+
+
 if __name__ == "__main__":
     test_store_events_inserts_actionable_brain_signal_once()
     test_get_seen_hashes_only_reads_today()
+    test_market_hours_use_dynamic_us_market_holidays()
     print("Event daemon contract tests passed")

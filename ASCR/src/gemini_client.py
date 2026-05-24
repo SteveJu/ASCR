@@ -186,6 +186,7 @@ def analyze_headline(headline: str, source: str = "", extra: str = "") -> dict |
 
     try:
         result = generate(prompt, max_tokens=4096, temperature=0.1,
+                         model=os.getenv("ASCR_EVENT_MODEL", "gemini-3.1-flash-lite"),
                          response_schema=ANALYSIS_SCHEMA,
                          purpose="event_analysis")
         text = result["text"]
