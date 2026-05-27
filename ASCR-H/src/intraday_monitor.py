@@ -248,8 +248,7 @@ def run_intraday_trades() -> dict:
             continue
 
         proceeds = qty * price
-        realized = (price - entry) * qty
-        db.close_position(ticker, realized)
+        realized = db.reduce_position(ticker, qty, price)
         today = datetime.now().strftime("%Y-%m-%d")
         db.add_order(today, ticker, "SELL", qty, price, sell.get("reason", "intraday_stop"))
         cash += proceeds
@@ -286,7 +285,7 @@ def run_intraday_trades() -> dict:
             break
         qty = amount / price
         today = datetime.now().strftime("%Y-%m-%d")
-        db.upsert_position(ticker, today, price, qty, amount, amount, max_price=price, peak_date=today)
+        db.increase_position(ticker, today, price, qty)
         db.add_order(today, ticker, "BUY", qty, price, f"intraday_fill: {buy.get('reason', '')}")
         cash -= amount
         db.update_cash(cash)

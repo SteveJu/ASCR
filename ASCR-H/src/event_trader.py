@@ -310,12 +310,10 @@ def run_daily() -> dict:
             logger.warning(f"SELL {ticker} skipped: no live price")
             continue
 
-        entry = pos["avg_entry_price"]
         sell_amount = pos["quantity"] * price
-        realized = (price - entry) * pos["quantity"]
         pnl_pct = sell["pnl_pct"]
 
-        db.close_position(ticker, realized)
+        realized = db.reduce_position(ticker, pos["quantity"], price)
         db.update_cash(cash + sell_amount)
         cash += sell_amount
         db.add_order(today, ticker, "SELL", pos["quantity"], price,
@@ -372,8 +370,7 @@ def run_daily() -> dict:
             break
 
         shares = amount / price
-        db.upsert_position(ticker, today, price, shares, amount, amount,
-                           0, 0, price, today, "", "", "open")
+        db.increase_position(ticker, today, price, shares, "", "")
         db.update_cash(cash - amount)
         cash -= amount
         db.add_order(today, ticker, "BUY", shares, price,

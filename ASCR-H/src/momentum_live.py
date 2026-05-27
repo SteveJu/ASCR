@@ -90,8 +90,7 @@ def run_daily() -> dict:
 
         if sell_reason:
             sell_amount = pos["quantity"] * price
-            realized = (price - entry) * pos["quantity"]
-            db.close_position(ticker, realized)
+            realized = db.reduce_position(ticker, pos["quantity"], price)
             db.update_cash(cash + sell_amount)
             cash += sell_amount
             db.add_order(today, ticker, "SELL", pos["quantity"], price, sell_reason,
@@ -139,9 +138,7 @@ def run_daily() -> dict:
             shares = amount / price
             rank = next((i+1 for i, x in enumerate(scores) if x["ticker"] == ticker), 99)
 
-            db.upsert_position(ticker, today, price, shares, amount, amount,
-                              0, 0, price, today, s.get("rating", ""),
-                              "", "open")
+            db.increase_position(ticker, today, price, shares, s.get("rating", ""), "")
             db.update_cash(cash - amount)
             cash -= amount
             db.add_order(today, ticker, "BUY", shares, price,

@@ -407,6 +407,12 @@ def cmd_regime_check(args):
         logger.warning(f"Telegram regime: {e}")
 
 
+def cmd_position_audit(args):
+    """Reconcile positions/account cash against paper_orders."""
+    from src.position_audit import audit_positions, format_audit_report
+    print(format_audit_report(audit_positions()))
+
+
 def main():
     parser = argparse.ArgumentParser(prog="ASCR-H")
     sub = parser.add_subparsers(dest="command")
@@ -444,6 +450,7 @@ def main():
 
     sub.add_parser("weekly-report", help="Generate and send weekly report")
     sub.add_parser("regime-check", help="AI trade regime monitor — kill signal detection")
+    sub.add_parser("position-audit", help="Reconcile positions against order ledger")
 
     p = sub.add_parser("decisions")
     p.add_argument("--mode", choices=["live_paper", "historical_backtest"], default="historical_backtest")
@@ -461,6 +468,7 @@ def main():
         "worst-decisions": cmd_worst_decisions,
         "status": cmd_status, "report": cmd_report, "orders": cmd_orders,
         "decisions": cmd_decisions,
+        "position-audit": cmd_position_audit,
     }
     if args.command in commands:
         commands[args.command](args)

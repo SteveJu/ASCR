@@ -8,6 +8,7 @@ from src.utils import get_logger
 
 logger = get_logger("db")
 _journal_mode_initialized = False
+POSITION_EPS = 1e-8
 
 @contextmanager
 def get_conn():
@@ -262,6 +263,11 @@ def get_all_positions(status="open"):
 def upsert_position(ticker, entry_date, avg_price, quantity, cost_basis, current_value,
                      realized_pnl=0, unrealized_pnl=0, max_price=None, peak_date=None,
                      rating="", sector="", status="open"):
+    """Set an absolute position snapshot.
+
+    Use increase_position/reduce_position for trade fills. This helper is for
+    price refreshes and explicit snapshot replacement.
+    """
     with get_conn() as conn:
         old = conn.execute("SELECT quantity, current_value, status FROM paper_positions WHERE ticker=?", (ticker,)).fetchone()
         conn.execute("""
@@ -285,6 +291,101 @@ def upsert_position(ticker, entry_date, avg_price, quantity, cost_basis, current
         f"old_value={old_value} new_value=${current_value:,.2f} old_status={old_status} new_status={status}"
     )
 
+
+def increase_position(ticker, entry_date, buy_price, buy_quantity,
+                      rating="", sector=""):
+    """Increase an open position using weighted-average cost accounting."""
+    if buy_quantity <= 0 or buy_price <= 0:
+        logger.warning(
+            f"position_increase_noop ticker={ticker} qty={buy_quantity} price={buy_price}"
+        )
+        return None
+
+    buy_cost = buy_quantity * buy_price
+    with get_conn() as conn:
+        pos = conn.execute(
+            "SELECT * FROM paper_positions WHERE ticker=? AND status='open'",
+            (ticker,),
+        ).fetchone()
+
+        if pos and pos["quantity"] > POSITION_EPS:
+            pos = dict(pos)
+            old_qty = pos["quantity"]
+            old_cost = pos["cost_basis"] or (pos["avg_entry_price"] * old_qty)
+            new_qty = old_qty + buy_quantity
+            new_cost = old_cost + buy_cost
+            new_avg = new_cost / new_qty
+            current_value = new_qty * buy_price
+            old_peak = pos.get("max_price_since_entry") or pos["avg_entry_price"] or buy_price
+            peak = max(old_peak, buy_price)
+            peak_date = entry_date if buy_price >= peak else pos.get("peak_date")
+            realized_pnl = pos.get("realized_pnl", 0) or 0
+            unrealized_pnl = current_value - new_cost
+            keep_rating = rating or pos.get("rating_at_entry", "")
+            keep_sector = sector or pos.get("sector", "")
+
+            conn.execute("""
+                UPDATE paper_positions
+                SET avg_entry_price=?, quantity=?, cost_basis=?, current_value=?,
+                    realized_pnl=?, unrealized_pnl=?, max_price_since_entry=?,
+                    peak_date=?, rating_at_entry=?, sector=?, status='open'
+                WHERE ticker=? AND status='open'
+            """, (
+                new_avg, new_qty, new_cost, current_value, realized_pnl,
+                unrealized_pnl, peak, peak_date, keep_rating, keep_sector, ticker,
+            ))
+            result = {
+                "ticker": ticker, "entry_date": pos["entry_date"],
+                "avg_entry_price": new_avg, "quantity": new_qty,
+                "cost_basis": new_cost, "current_value": current_value,
+                "realized_pnl": realized_pnl, "unrealized_pnl": unrealized_pnl,
+                "max_price_since_entry": peak, "peak_date": peak_date,
+                "rating_at_entry": keep_rating, "sector": keep_sector,
+                "status": "open",
+            }
+            logger.info(
+                f"position_increase ticker={ticker} old_qty={old_qty:.4f} "
+                f"buy_qty={buy_quantity:.4f} new_qty={new_qty:.4f} "
+                f"buy_price=${buy_price:.2f} avg=${new_avg:.2f}"
+            )
+        else:
+            conn.execute("""
+                INSERT INTO paper_positions (ticker, entry_date, avg_entry_price, quantity,
+                    cost_basis, current_value, realized_pnl, unrealized_pnl,
+                    max_price_since_entry, peak_date, rating_at_entry, sector, status)
+                VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, 'open')
+                ON CONFLICT(ticker) DO UPDATE SET
+                    entry_date=excluded.entry_date,
+                    avg_entry_price=excluded.avg_entry_price,
+                    quantity=excluded.quantity,
+                    cost_basis=excluded.cost_basis,
+                    current_value=excluded.current_value,
+                    realized_pnl=0,
+                    unrealized_pnl=0,
+                    max_price_since_entry=excluded.max_price_since_entry,
+                    peak_date=excluded.peak_date,
+                    rating_at_entry=excluded.rating_at_entry,
+                    sector=excluded.sector,
+                    status='open'
+            """, (
+                ticker, entry_date, buy_price, buy_quantity, buy_cost, buy_cost,
+                buy_price, entry_date, rating, sector,
+            ))
+            result = {
+                "ticker": ticker, "entry_date": entry_date,
+                "avg_entry_price": buy_price, "quantity": buy_quantity,
+                "cost_basis": buy_cost, "current_value": buy_cost,
+                "realized_pnl": 0, "unrealized_pnl": 0,
+                "max_price_since_entry": buy_price, "peak_date": entry_date,
+                "rating_at_entry": rating, "sector": sector, "status": "open",
+            }
+            logger.info(
+                f"position_open ticker={ticker} qty={buy_quantity:.4f} "
+                f"price=${buy_price:.2f} cost=${buy_cost:,.2f}"
+            )
+
+    return result
+
 def close_position(ticker, realized_pnl):
     closed = False
     with get_conn() as conn:
@@ -293,7 +394,7 @@ def close_position(ticker, realized_pnl):
             total_realized = (pos["realized_pnl"] or 0) + realized_pnl
             conn.execute("""
                 UPDATE paper_positions SET status='closed', quantity=0, current_value=0,
-                    realized_pnl=?, unrealized_pnl=0
+                    cost_basis=0, realized_pnl=?, unrealized_pnl=0
                 WHERE ticker=? AND status='open'
             """, (total_realized, ticker))
             closed = True
@@ -316,20 +417,22 @@ def reduce_position(ticker, sell_quantity, sell_price):
         realized = (sell_price - avg_entry) * sell_qty
         new_qty = pos["quantity"] - sell_qty
 
-        if new_qty <= 0.01:  # effectively closed
+        if new_qty <= POSITION_EPS:  # effectively closed
             total_realized = (pos["realized_pnl"] or 0) + realized
             conn.execute("""
                 UPDATE paper_positions SET status='closed', quantity=0, current_value=0,
-                    realized_pnl=?, unrealized_pnl=0
+                    cost_basis=0, realized_pnl=?, unrealized_pnl=0
                 WHERE ticker=? AND status='open'
             """, (total_realized, ticker))
         else:
             new_cost = avg_entry * new_qty
+            new_value = new_qty * sell_price
+            new_unrealized = new_value - new_cost
             conn.execute("""
                 UPDATE paper_positions SET quantity=?, cost_basis=?,
-                    realized_pnl=realized_pnl+?
+                    current_value=?, unrealized_pnl=?, realized_pnl=realized_pnl+?
                 WHERE ticker=? AND status='open'
-            """, (new_qty, new_cost, realized, ticker))
+            """, (new_qty, new_cost, new_value, new_unrealized, realized, ticker))
 
         logger.info(
             f"position_reduce ticker={ticker} sell_qty={sell_qty:.4f} price=${sell_price:.2f} "

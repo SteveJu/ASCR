@@ -63,22 +63,7 @@ def buy(ticker: str, dollar_amount: float, reason: str = "", rating: str = "") -
     date = datetime.now().strftime("%Y-%m-%d")
 
     db.add_order(date, ticker, "BUY", quantity, price, reason, "", rating)
-
-    if existing:
-        # Average up
-        old_qty = existing["quantity"]
-        old_cost = existing["cost_basis"]
-        new_qty = old_qty + quantity
-        new_cost = old_cost + (quantity * price)
-        new_avg = new_cost / new_qty
-        db.upsert_position(ticker, existing["entry_date"], new_avg, new_qty, new_cost,
-                          new_qty * price, existing.get("realized_pnl", 0), 0,
-                          max(price, existing.get("max_price_since_entry", 0)),
-                          date, rating, existing.get("sector", ""))
-    else:
-        cost = quantity * price
-        db.upsert_position(ticker, date, price, quantity, cost, cost,
-                          0, 0, price, date, rating, "")
+    db.increase_position(ticker, date, price, quantity, rating, existing.get("sector", "") if existing else "")
 
     # Update cash
     db.update_cash(cash - dollar_amount)
