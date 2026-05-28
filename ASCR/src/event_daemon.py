@@ -108,25 +108,19 @@ def _filter_and_analyze(new_articles: list) -> list:
     if not new_articles:
         return []
 
-    from src.event_pipeline import (
-        filter_headlines, analyze_article, init_events_db, _python_prefilter
-    )
+    from src.event_pipeline import filter_headlines, analyze_article, init_events_db
     import re as _re
 
     init_events_db()
     today = datetime.now().strftime("%Y-%m-%d")
 
-    # Step 0: Python pre-filter (keyword match, free)
-    prefiltered = _python_prefilter(new_articles)
-    if not prefiltered:
-        return []
-
-    # Step 1: Haiku filter (batch of 50)
-    relevant = filter_headlines(prefiltered[:50])
+    # Step 1: quant headline filter. This keeps only material, incremental news
+    # and orders it before scarce LLM calls are spent.
+    relevant = filter_headlines(new_articles)
     if not relevant:
         return []
 
-    logger.info(f"Filter: {len(new_articles)} → {len(prefiltered)} prefilt → {len(relevant)} relevant")
+    logger.info(f"Filter: {len(new_articles)} → {len(relevant)} quant-relevant")
 
     # Step 2: Deep analysis per article (capped at 10 per cycle to control cost)
     MAX_PER_CYCLE = 10

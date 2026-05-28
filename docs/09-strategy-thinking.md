@@ -39,6 +39,33 @@ Lower-value signals:
 - vague AI marketing language
 - pure price momentum without a new event
 
+## News Triage
+
+ASCR treats news as a data stream, not reading material. The first question is:
+
+> Is this incremental, material information that could change expectations for a tracked company or its direct supply chain?
+
+The v1.8 router assigns a `quant_score` before any deep LLM call. It favors:
+
+- named customer wins or losses
+- material contracts, supply agreements, prepayments, and capacity reservations
+- guidance changes, earnings surprises, backlog, bookings, and explicit magnitude
+- SEC filings, funding, dilution, auditor or management red flags
+- supply shortages, export controls, and regulation
+- major counterparty signals from hyperscalers, NVIDIA, AMD, Broadcom, TSMC, Samsung, or SK Hynix
+
+It penalizes:
+
+- analyst target-price notes without new facts
+- "best AI stocks" lists and generic stock-pick content
+- vague AI hype
+- syndicated market recaps
+- generic 13F notices that do not name a position change
+
+This is still a routing layer, not a complete alpha model. The stronger version
+would combine the routed news with price reaction, volume, options volatility,
+and historical event-study calibration.
+
 ## Scoring Philosophy
 
 Each event gets an `evidence_delta`.

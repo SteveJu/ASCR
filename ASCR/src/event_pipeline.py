@@ -16,9 +16,11 @@ import json
 import time
 import hashlib
 import sqlite3
+import re
 import feedparser
 import requests
 from datetime import datetime, timedelta
+from email.utils import parsedate_to_datetime
 from urllib.parse import quote
 from anthropic import Anthropic
 from src import config, db
@@ -36,6 +38,9 @@ LLM_RETRY_MAX_SECONDS = max(
     LLM_RETRY_BASE_SECONDS,
     float(os.getenv("ASCR_LLM_RETRY_MAX_SECONDS", "12")),
 )
+QUANT_PREFILTER_MIN_SCORE = int(os.getenv("ASCR_PREFILTER_MIN_SCORE", "50"))
+QUANT_PREFILTER_MAX_PER_BATCH = int(os.getenv("ASCR_PREFILTER_MAX_PER_BATCH", "12"))
+QUANT_RELEVANT_MAX_PER_RUN = int(os.getenv("ASCR_RELEVANT_MAX_PER_RUN", "45"))
 
 # Load API key
 def _get_client():
@@ -351,32 +356,33 @@ def fetch_earnings_calendar(tickers: list) -> list:
 
 # ─── LLM Analysis ───
 
-FILTER_PROMPT = """You are an AI supply chain investment analyst.
-Given these news headlines, identify which ones are relevant to AI supply chain investing.
+FILTER_PROMPT = """You are a quantamental AI supply-chain news router.
+Your job is NOT to mark every related headline as relevant. Only keep headlines with incremental,
+material information that could plausibly change market expectations for a tracked company or its
+direct suppliers/customers.
 
 Our universe: memory/HBM (MU, SNDK, STX, WDC), optical (CIEN, COHR, GLW, LITE),
 networking (ANET, AVGO, CSCO, MRVL), power/cooling (CEG, ETN, NEE, VRT, VST),
 data centers (DLR, EQIX, IREN, NBIS), semicap (AMAT, ASML, KLAC, LRCX, TER),
 EDA/IP (ARM, CDNS, SNPS), infrastructure (AAOI, CRWV, MOD, PWR).
 
-RELEVANT signals (mark relevant=true):
-- Earnings beats/misses with AI segment detail
-- Revenue guidance changes (raised/lowered)
-- New contracts, partnerships, investments
-- Supply chain disruptions or shortages
-- Major institutional buys/sells (13F, insider trades)
-- Capacity expansion or new facility announcements
-- Customer wins (hyperscaler orders)
-- Price changes in HBM/DRAM/NAND/optical components
+KEEP only if it has at least one of:
+- Earnings/guidance surprise with numbers or AI segment detail
+- New/lost customer, material contract, supply agreement, prepayment, capacity reservation, backlog/order change
+- SEC filing with material agreement, acquisition, offering/dilution, auditor/management red flag
+- Supply shortage/disruption, export controls, regulation, price change in HBM/DRAM/NAND/optical components
+- Major counterparty event that identifies a beneficiary or loser in the supply chain
+- Insider/fund move only when it names the exact stock and position change
 
-NOT relevant (mark relevant=false):
+DROP:
 - Generic market commentary, opinion pieces
-- News >7 days old that's already priced in
-- Analyst price target changes (unless dramatically different)
-- General AI hype without specific company impact
+- Analyst price target / rating notes without new facts
+- "Best AI stocks", "is this stock a buy", watchlists, recaps, syndicated duplicates
+- General AI hype without a specific company-level revenue, cost, capacity, customer, or risk impact
+- Generic 13F filing notices that do not name a position change
 
 For each headline, respond with a JSON array. Each element:
-{{"index": N, "relevant": true/false, "ticker": "most affected ticker or null", "new_company": "ticker of company NOT in our universe but should be tracked, or null", "reason": "one line why"}}
+{{"index": N, "relevant": true/false, "ticker": "most affected ticker or null", "new_company": "ticker of company NOT in our universe but should be tracked, or null", "reason": "one line materiality/surprise reason"}}
 
 IMPORTANT: If a headline mentions a company that benefits from AI supply chain but is NOT in our universe above, put its ticker in "new_company". This is how we discover new stocks to track.
 
@@ -430,90 +436,316 @@ Respond with ONLY valid JSON:
 }}"""
 
 
+COMPANY_ALIASES = {
+    "AAOI": ("applied optoelectronics",),
+    "ACMR": ("acm research",),
+    "AMAT": ("applied materials",),
+    "AMD": ("advanced micro devices",),
+    "ANET": ("arista", "arista networks"),
+    "APH": ("amphenol",),
+    "APLD": ("applied digital",),
+    "ARM": ("arm holdings",),
+    "ASML": ("asml",),
+    "AVGO": ("broadcom",),
+    "BE": ("bloom energy",),
+    "CDNS": ("cadence", "cadence design"),
+    "CEG": ("constellation energy",),
+    "CIEN": ("ciena",),
+    "COHR": ("coherent",),
+    "CRDO": ("credosemi", "credo technology", "credo"),
+    "CRWV": ("coreweave",),
+    "CSCO": ("cisco",),
+    "DLR": ("digital realty",),
+    "EQIX": ("equinix",),
+    "ETN": ("eaton",),
+    "GLW": ("corning",),
+    "INTC": ("intel",),
+    "IREN": ("iren", "iris energy"),
+    "KLAC": ("kla", "kla corp", "kla corporation"),
+    "LITE": ("lumentum",),
+    "LRCX": ("lam research",),
+    "MOD": ("modine",),
+    "MRVL": ("marvell",),
+    "MU": ("micron", "micron technology"),
+    "NBIS": ("nebius",),
+    "NEE": ("nextera", "nextera energy"),
+    "NVDA": ("nvidia",),
+    "ON": ("on semiconductor", "onsemi"),
+    "PLTR": ("palantir",),
+    "POET": ("poet technologies",),
+    "PWR": ("quanta services",),
+    "SAP": ("sap",),
+    "SMCI": ("super micro", "supermicro", "super micro computer"),
+    "SNDK": ("sandisk", "san disk"),
+    "SNPS": ("synopsys",),
+    "STX": ("seagate",),
+    "TER": ("teradyne",),
+    "TSM": ("tsmc", "taiwan semiconductor"),
+    "UCTT": ("ultra clean", "ultra clean holdings"),
+    "VICR": ("vicor",),
+    "VRT": ("vertiv",),
+    "VST": ("vistra",),
+    "WDC": ("western digital",),
+}
+
+MAJOR_COUNTERPARTY_TERMS = {
+    "nvidia", "nvda", "microsoft", "msft", "amazon", "aws", "google", "alphabet",
+    "meta", "oracle", "openai", "broadcom", "amd", "tsmc", "samsung",
+    "sk hynix", "hynix", "apple", "tesla", "xai", "anthropic",
+}
+
+SUPPLY_CHAIN_TERMS = {
+    "ai chip", "ai server", "gpu", "hbm", "dram", "nand", "memory", "enterprise ssd",
+    "data center", "datacenter", "hyperscaler", "semiconductor", "wafer", "fab",
+    "foundry", "euv", "advanced packaging", "co-packaged optics", "optical",
+    "transceiver", "800g", "1.6t", "networking", "switch", "liquid cooling",
+    "cooling", "power", "transformer", "grid", "interconnect", "inference",
+    "training cluster", "blackwell", "rubin", "nvlink", "ai infrastructure",
+}
+
+MATERIAL_EVENT_TERMS = {
+    "sec 8-k", "8-k", "6-k", "material definitive agreement",
+    "capacity reservation", "prepayment", "supply agreement", "multi-year agreement",
+    "long-term agreement", "customer win", "new customer", "wins order", "order win",
+    "contract", "backlog", "bookings", "record revenue", "record bookings",
+    "raises guidance", "raised guidance", "raise guidance", "guidance raise",
+    "cuts guidance", "cut guidance", "lowers guidance", "lowered guidance",
+    "guidance cut", "beats estimates", "beat estimates", "misses estimates",
+    "missed estimates", "earnings beat", "earnings miss", "preannounces",
+    "pre-announces", "shortage", "supply crunch", "export control", "export restriction",
+    "regulatory approval", "regulatory probe", "antitrust", "investigation",
+    "acquisition", "merger", "takeover", "joint venture", "strategic investment",
+    "minority stake", "offering", "secondary offering", "convertible", "shelf registration",
+    "at-the-market", "atm program", "dilution", "customer loss", "loses customer",
+    "bankruptcy", "going concern", "auditor resigns", "cfo resigns", "ceo resigns",
+}
+
+MEDIUM_SIGNAL_TERMS = {
+    "partnership", "collaboration", "expansion", "facility", "plant", "launches",
+    "ramps", "shipment", "shipments", "price increase", "price hike", "price drop",
+    "utilization", "capex", "capital expenditure", "insider buying", "insider buy",
+    "insider selling", "form 4", "13f", "stake", "position", "adds stake",
+    "cuts stake", "raises stake", "reduces stake",
+}
+
+NOISE_TERMS = {
+    "best ai stocks", "stocks to buy", "stock to buy", "is it too late",
+    "is this stock a buy", "should you buy", "could be a millionaire",
+    "millionaire maker", "better buy", "vs.", "stock market today",
+    "dow jones", "nasdaq today", "s&p 500", "watchlist", "watch list",
+    "motley fool", "zacks", "investorplace", "simply wall st", "24/7 wall st",
+    "what's going on", "what is going on", "here's why", "why shares",
+    "why stock", "why did", "price target", "initiates coverage",
+    "maintains rating", "reiterates", "analyst says", "analysts say",
+    "analyst rating", "top pick", "market commentary", "opinion",
+    "prediction", "forecast: ", "etf", "fund flow", "options traders",
+    "hidden", "about to", "profit soars", "net profit soars",
+}
+
+HARD_EXCLUDE_TERMS = {
+    "crypto", "bitcoin", "ethereum", "nft", "meme stock", "sports betting",
+    "cannabis", "marijuana", "covid vaccine", "motor supply", "mercedes",
+    "gasgoo",
+}
+
+AMBIGUOUS_TICKERS = {"BE", "IT", "ON"}
+
+
+def _published_age_days(published: str) -> int | None:
+    if not published:
+        return None
+    try:
+        if re.match(r"^\d{4}-\d{2}-\d{2}", published):
+            dt = datetime.fromisoformat(published[:10])
+        else:
+            dt = parsedate_to_datetime(published)
+            if dt.tzinfo is not None:
+                dt = dt.astimezone().replace(tzinfo=None)
+        return max(0, (datetime.now() - dt).days)
+    except Exception:
+        return None
+
+
+def _canonical_news_title(title: str) -> str:
+    title = (title or "").lower()
+    title = re.sub(r"\s+-\s+[^-]{2,80}$", "", title)
+    title = re.sub(r"[^a-z0-9$%]+", " ", title)
+    return re.sub(r"\s+", " ", title).strip()
+
+
+def _term_hits(text: str, terms) -> list:
+    return [term for term in terms if term in text]
+
+
+def _extract_ticker(title: str) -> str | None:
+    title_lower = f" {title.lower()} "
+    title_upper = f" {title.upper()} "
+    ticker_tokens = config.all_tickers()
+    for ticker in sorted(ticker_tokens, key=len, reverse=True):
+        if f"${ticker}" in title_upper:
+            return ticker
+        if ticker in AMBIGUOUS_TICKERS:
+            continue
+        if re.search(rf"(?<![A-Z]){re.escape(ticker)}(?![A-Z])", title_upper):
+            return ticker
+    for ticker, aliases in COMPANY_ALIASES.items():
+        for alias in aliases:
+            if f" {alias} " in title_lower:
+                return ticker
+    return None
+
+
+def _score_article_quant_value(article: dict) -> dict:
+    """Score a headline for incremental, material, tradable information."""
+    title = article.get("title") or article.get("headline") or ""
+    title_lower = f" {title.lower()} "
+    source = article.get("source_query", "")
+    score = 0
+    reasons = []
+
+    hard_noise = _term_hits(title_lower, HARD_EXCLUDE_TERMS)
+    if hard_noise:
+        return {
+            "score": 0,
+            "ticker": None,
+            "reason": f"hard_exclude:{hard_noise[0]}",
+            "drop": True,
+        }
+
+    ticker = article.get("filter_ticker") or _extract_ticker(title)
+    if ticker:
+        score += 20
+        reasons.append(f"tracked:{ticker}")
+
+    material_hits = _term_hits(title_lower, MATERIAL_EVENT_TERMS)
+    medium_hits = _term_hits(title_lower, MEDIUM_SIGNAL_TERMS)
+    supply_hits = _term_hits(title_lower, SUPPLY_CHAIN_TERMS)
+    counterparty_hits = _term_hits(title_lower, MAJOR_COUNTERPARTY_TERMS)
+    noise_hits = _term_hits(title_lower, NOISE_TERMS)
+
+    if material_hits:
+        score += min(45, 28 + 6 * len(material_hits))
+        reasons.append("material:" + ",".join(material_hits[:2]))
+    if medium_hits:
+        score += min(24, 12 + 4 * len(medium_hits))
+        reasons.append("signal:" + ",".join(medium_hits[:2]))
+    if supply_hits:
+        score += min(22, 8 + 3 * len(supply_hits))
+        reasons.append("supply_chain:" + ",".join(supply_hits[:2]))
+    if counterparty_hits:
+        score += min(24, 10 + 4 * len(counterparty_hits))
+        reasons.append("counterparty:" + ",".join(counterparty_hits[:2]))
+
+    if re.search(r"\$ ?\d+(\.\d+)?\s?(billion|bn|million|m)\b", title_lower):
+        score += 18
+        reasons.append("magnitude:$")
+    elif re.search(r"\b\d+(\.\d+)?\s?(billion|bn)\b", title_lower):
+        score += 14
+        reasons.append("magnitude:bn")
+    if re.search(r"\b\d+(\.\d+)?%", title_lower):
+        score += 8
+        reasons.append("magnitude:%")
+
+    if any(term in title_lower for term in (" new ", " wins ", " signed ", " signs ", " first ", "exclusive")):
+        score += 8
+        reasons.append("incremental")
+
+    if source == "sec_8k":
+        score += 38
+        reasons.append("source:sec_8k")
+    elif source == "earnings":
+        score += 30
+        reasons.append("source:earnings")
+    elif source == "13f_institutional":
+        score += 6
+        reasons.append("source:13f")
+
+    if source == "13f_institutional" and ticker and re.search(r"\b(buys|sells|adds|cuts|raises|reduces)\b", title_lower):
+        score += 10
+        reasons.append("position_change")
+
+    if noise_hits:
+        penalty = 32 if not material_hits else 18
+        score -= penalty
+        reasons.append("noise:" + ",".join(noise_hits[:2]))
+
+    age_days = _published_age_days(article.get("published", ""))
+    if age_days is not None:
+        if age_days > 14:
+            score -= 45
+            reasons.append(f"stale:{age_days}d")
+        elif age_days > 7:
+            score -= 20
+            reasons.append(f"old:{age_days}d")
+
+    if source == "13f_institutional" and not ticker and not re.search(r"\b(buys|sells|adds|cuts|stake|position)\b", title_lower):
+        score = min(score, 24)
+        reasons.append("generic_13f")
+
+    if not ticker and not material_hits and score < QUANT_PREFILTER_MIN_SCORE + 10:
+        score = min(score, 35)
+        reasons.append("no_actor")
+
+    score = max(0, min(100, score))
+    return {
+        "score": score,
+        "ticker": ticker,
+        "reason": "; ".join(reasons) or "below_threshold",
+        "drop": False,
+    }
+
+
 def _python_prefilter(articles: list) -> list:
-    """Fast Python keyword filter — eliminates obviously irrelevant articles.
-    Passes borderline cases through (better to over-include than miss).
-    """
-    # Keywords that indicate AI/semiconductor/supply chain relevance
-    INCLUDE_KEYWORDS = {
-        # Companies
-        "nvidia", "nvda", "amd", "intel", "tsmc", "samsung", "hynix", "micron",
-        "broadcom", "marvell", "asml", "applied materials", "lam research",
-        "synopsys", "cadence", "arista", "vertiv", "corning", "coherent",
-        "lumentum", "ciena", "vistra", "constellation energy", "quanta",
-        # Tech
-        "ai chip", "ai server", "gpu", "hbm", "dram", "nand", "data center",
-        "datacenter", "semiconductor", "chip", "wafer", "fab", "foundry",
-        "optical", "photonic", "networking", "switch", "router",
-        "cooling", "power", "transformer", "infrastructure",
-        # Events
-        "deal", "contract", "partnership", "investment", "acquire", "merger",
-        "supply", "shortage", "capacity", "expansion", "billion",
-        "earnings", "revenue", "guidance", "forecast", "upgrade", "downgrade",
-        "insider", "form 4", "sec filing", "8-k",
-        # AI broad
-        "artificial intelligence", "machine learning", "deep learning",
-        "generative ai", "large language", "llm", "training", "inference",
-        "hyperscale", "cloud computing",
-    }
+    """Rank headlines like a quant news router: materiality first, topicality second."""
+    ranked = []
+    seen_canonical = set()
 
-    # Keywords that indicate irrelevance
-    EXCLUDE_KEYWORDS = {
-        "crypto", "bitcoin", "ethereum", "nft", "meme stock", "sports betting",
-        "cannabis", "marijuana", "covid vaccine", "real estate investment trust",
-    }
-
-    filtered = []
-    for a in articles:
-        title_lower = a["title"].lower()
-
-        # Exclude obvious noise
-        if any(kw in title_lower for kw in EXCLUDE_KEYWORDS):
+    for article in articles:
+        title = article.get("title") or article.get("headline") or ""
+        if not title:
             continue
 
-        # Include if any keyword matches
-        if any(kw in title_lower for kw in INCLUDE_KEYWORDS):
-            filtered.append(a)
+        scorecard = _score_article_quant_value(article)
+        if scorecard.get("drop") or scorecard["score"] < QUANT_PREFILTER_MIN_SCORE:
             continue
 
-        # Check if any tracked ticker is mentioned
-        from src import config
-        for ticker in config.all_tickers():
-            if f" {ticker.lower()} " in f" {title_lower} " or f"${ticker.lower()}" in title_lower:
-                filtered.append(a)
-                break
+        canonical = _canonical_news_title(title)
+        if canonical in seen_canonical:
+            continue
+        seen_canonical.add(canonical)
 
-    return filtered
+        enriched = dict(article)
+        enriched["filter_ticker"] = scorecard.get("ticker")
+        enriched["filter_reason"] = scorecard.get("reason", "")
+        enriched["quant_score"] = scorecard["score"]
+        ranked.append(enriched)
+
+    ranked.sort(key=lambda item: item.get("quant_score", 0), reverse=True)
+    return ranked[:QUANT_PREFILTER_MAX_PER_BATCH]
 
 
 def filter_headlines(articles: list) -> list:
-    """Two-stage filter: fast Python pre-filter → Haiku for borderline cases.
+    """Two-stage filter: quant pre-score -> optional Haiku tie-break.
 
-    Python filter handles ~80% of filtering (free, instant).
-    Haiku only called if >50 articles pass pre-filter (rare).
+    The first pass is intentionally selective: keep concrete, material,
+    incremental news and sort it so scarce LLM calls go to the best candidates.
     """
     if not articles:
         return []
 
-    # Stage 1: Python keyword filter (free)
+    # Stage 1: deterministic quant-style headline score (free)
     prefiltered = _python_prefilter(articles)
-    logger.info(f"Python pre-filter: {len(articles)}→{len(prefiltered)} articles")
+    top_score = prefiltered[0].get("quant_score", 0) if prefiltered else 0
+    logger.info(
+        f"Quant pre-filter: {len(articles)}→{len(prefiltered)} articles "
+        f"(threshold={QUANT_PREFILTER_MIN_SCORE}, top={top_score})"
+    )
 
     # If pre-filter is selective enough, skip Haiku entirely
     if len(prefiltered) <= 50:
-        # Assign filter_ticker from headline for each article
-        from src import config
-        tickers = config.all_tickers()
-        for a in prefiltered:
-            title_upper = a["title"].upper()
-            for t in tickers:
-                if t in title_upper:
-                    a["filter_ticker"] = t
-                    a["filter_reason"] = "keyword_match"
-                    break
         return prefiltered
 
-    # Stage 2: Too many passed — use Haiku to narrow down (rare)
+    # Stage 2: Too many passed; use Haiku to narrow down with materiality rules.
     logger.info(f"Pre-filter passed {len(prefiltered)} — using Haiku to narrow")
     client = _get_client()
     headlines = "\n".join(f"{i}. {a['title']}" for i, a in enumerate(prefiltered))
@@ -551,12 +783,12 @@ def filter_headlines(articles: list) -> list:
                 continue
             if r.get("relevant"):
                 idx = r.get("index", -1)
-                if isinstance(idx, int) and 0 <= idx < len(articles):
-                    articles[idx]["filter_ticker"] = r.get("ticker")
-                    articles[idx]["filter_reason"] = r.get("reason", "")
-                    relevant.append(articles[idx])
+                if isinstance(idx, int) and 0 <= idx < len(prefiltered):
+                    prefiltered[idx]["filter_ticker"] = r.get("ticker") or prefiltered[idx].get("filter_ticker")
+                    prefiltered[idx]["filter_reason"] = r.get("reason", "") or prefiltered[idx].get("filter_reason", "")
+                    relevant.append(prefiltered[idx])
 
-        logger.info(f"Haiku filter: {len(relevant)}/{len(articles)} relevant "
+        logger.info(f"Haiku filter: {len(relevant)}/{len(prefiltered)} relevant "
                     f"(usage: {resp.usage.input_tokens}in/{resp.usage.output_tokens}out)")
         return relevant
     except Exception as e:
@@ -568,7 +800,11 @@ def analyze_article(article: dict) -> dict | None:
     """Use Gemini to deeply analyze a relevant article (was Sonnet)."""
     extra = ""
     if article.get("filter_ticker"):
-        extra = f"Pre-filter suggested ticker: {article['filter_ticker']}\nReason: {article.get('filter_reason','')}"
+        extra = (
+            f"Pre-filter suggested ticker: {article['filter_ticker']}\n"
+            f"Quant headline score: {article.get('quant_score', 'n/a')}\n"
+            f"Reason: {article.get('filter_reason','')}"
+        )
 
     def _call_gemini():
         from src.gemini_client import analyze_headline
@@ -603,7 +839,11 @@ def _analyze_article_sonnet(article: dict) -> dict | None:
     client = _get_client()
     extra = ""
     if article.get("filter_ticker"):
-        extra = f"Pre-filter suggested ticker: {article['filter_ticker']}\nReason: {article.get('filter_reason','')}"
+        extra = (
+            f"Pre-filter suggested ticker: {article['filter_ticker']}\n"
+            f"Quant headline score: {article.get('quant_score', 'n/a')}\n"
+            f"Reason: {article.get('filter_reason','')}"
+        )
 
     try:
         resp = client.messages.create(
@@ -743,6 +983,14 @@ def run_pipeline(min_confidence=0.5, min_evidence_delta=3) -> list:
         batch = articles[i:i+batch_size]
         relevant.extend(filter_headlines(batch))
         time.sleep(0.5)
+
+    relevant.sort(key=lambda a: a.get("quant_score", 0), reverse=True)
+    if len(relevant) > QUANT_RELEVANT_MAX_PER_RUN:
+        logger.info(
+            f"Quant relevance cap: {len(relevant)}→{QUANT_RELEVANT_MAX_PER_RUN} "
+            f"before deep analysis"
+        )
+        relevant = relevant[:QUANT_RELEVANT_MAX_PER_RUN]
 
     logger.info(f"After filtering: {len(relevant)} relevant articles")
     alog("pipeline", "filter_done", total=len(articles), relevant=len(relevant))

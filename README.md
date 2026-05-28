@@ -1,6 +1,6 @@
 # ASCR: AI Supply Chain Radar
 
-**Version:** v1.7.0 operational health and quote reporting polish
+**Version:** v1.8.0 quant-style news routing
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](#quick-start)
 [![Status](https://img.shields.io/badge/status-research%20framework-orange)](#current-status)
@@ -62,6 +62,7 @@ ASCR, the brain:
 
 - fetches public market information
 - watches news, SEC filings, price events, and supply-chain signals
+- routes headlines through a quant-style materiality score before LLM analysis
 - extracts structured events with LLM assistance
 - logs AI API usage and estimated cost
 - scores evidence, asymmetry, momentum, risk, event alpha, and optional feedback alpha
@@ -158,6 +159,25 @@ python3 run_backtest.py live
 This mode starts from a blank state, ingests historical events forward in time, applies an execution lag, and lets ASCR-H-style paper rules reject orders. It is intended to be a more realistic complement to the older V1/V2/V3 simulators.
 
 See [docs/08-backtesting.md](docs/08-backtesting.md).
+
+## News Routing Update
+
+ASCR v1.8.0 adds a deterministic `quant_score` front-end for news. The router is
+stricter than topical relevance: it favors material contracts, guidance changes,
+SEC filings, customer wins/losses, funding or dilution, supply disruption,
+major counterparty signals, and explicit magnitude.
+
+It filters low-value headline flow before LLM analysis, including generic
+analyst notes, "best AI stocks" lists, vague AI hype, syndicated market recaps,
+and generic 13F notices that do not name a position change.
+
+Default knobs:
+
+```bash
+ASCR_PREFILTER_MIN_SCORE=50
+ASCR_PREFILTER_MAX_PER_BATCH=12
+ASCR_RELEVANT_MAX_PER_RUN=45
+```
 
 ## Quick Start
 
@@ -342,11 +362,12 @@ See [docs/00-public-release-checklist.md](docs/00-public-release-checklist.md).
 
 ## Current Status
 
-Current public release: v1.7.0
+Current public release: v1.8.0
 
 - sanitized ASCR source tree
 - sanitized ASCR-H source tree
 - sanitized backtest source tree
+- quant-style event news router with materiality scoring and LLM budget caps
 - validated scoring engine with calibration and ablation tools
 - calibration stability guard and event-alpha source/type calibration reports
 - Gemini 3.1 Flash Lite default for cost-controlled event analysis

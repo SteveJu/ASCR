@@ -61,6 +61,7 @@ That separation also lets users replace one side without rewriting the other. Fo
 ```text
 News / SEC / prices / fundamentals
   -> ASCR event pipeline
+  -> quant headline routing
   -> SQLite event and score tables
   -> recommender.get_portfolio_instructions()
   -> ASCR-H daily or intraday run
@@ -87,6 +88,22 @@ Source profiles keep methodology comparisons explicit:
 - `sec_only`
 - `sec_form4_13f`
 - `news_exploratory`
+
+## News Routing
+
+ASCR v1.8 adds a deterministic headline router before LLM analysis. It is not a
+prediction model; it is a quality gate that decides which articles deserve
+structured extraction.
+
+The router scores:
+
+- materiality: contracts, guidance, SEC filings, customer changes, dilution, supply disruption
+- surprise and magnitude: explicit dollar amounts, percentages, backlog, bookings, shortages
+- affected actor: tracked ticker, named supplier, or major counterparty
+- noise: generic analyst notes, stock-pick lists, vague AI hype, syndicated recaps
+
+Only high-scoring items move on to Gemini/Sonnet analysis. This keeps the event
+store focused on information that could plausibly change expectations.
 
 ## Local First
 

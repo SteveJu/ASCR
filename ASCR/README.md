@@ -1,4 +1,4 @@
-# ASCR v1.7
+# ASCR v1.8
 
 AI Supply Chain Stock Opportunity Discovery & Position Exit System.
 
@@ -9,8 +9,8 @@ Event-driven signal detection for AI supply chain stocks. Scans news, SEC filing
 ```
 Data Sources (free, Python-only)         LLM Analysis              Output
 ─────────────────────────────────       ──────────────            ────────
-Google News RSS (41 queries)     ──┐
-SEC 8-K (item-level parsing)     ──┤    Haiku: filter            Rankings
+Google News RSS (41 queries)     ──┐    Quant pre-score
+SEC 8-K (item-level parsing)     ──┤    Haiku: tie-break         Rankings
 SEC 13F (6 major funds)          ──┤──▶ Gemini: analyze          ──▶ Buy/Sell signals
 SEC Form 4 (insider trading)     ──┤    Sonnet: fallback         Telegram alerts
 Yahoo Finance (earnings+ratings) ──┤                              ASCR-H trigger
@@ -25,6 +25,7 @@ Price events (surge/crash/vol)   ──┘
 Continuous monitoring during market hours (9:00 AM - 4:30 PM ET):
 - Polls every 15 minutes for new articles and SEC filings
 - Hash-based dedup — only calls LLM on genuinely new items
+- Quant headline scoring keeps material events first and filters low-value topical news before deep analysis
 - Immediately triggers ASCR-H on actionable events
 - Cost: ~$0.03/cycle max (most cycles are free — nothing new)
 
@@ -43,7 +44,7 @@ Continuous monitoring during market hours (9:00 AM - 4:30 PM ET):
 
 ## Scoring Engine
 
-ASCR v1.7 keeps the validated scoring stack and adds operational health reporting for coverage-aware production checks:
+ASCR v1.8 keeps the validated scoring stack and adds quant-style news routing before deep LLM analysis:
 
 - base dimensions: evidence, asymmetry, momentum, risk
 - event alpha: time-decayed, source-weighted public events with confidence, verdict, conviction, and priced-in adjustment
@@ -54,6 +55,7 @@ ASCR v1.7 keeps the validated scoring stack and adds operational health reportin
 - event-alpha calibration: source/type weights are evaluated with the same IC objective
 - event analysis defaults to Gemini 3.1 Flash Lite via `ASCR_EVENT_MODEL`
 - weekly health checks distinguish latest single-ticker updates from full-universe coverage and flag launchd nonzero last exits
+- quant headline scoring prioritizes materiality, surprise, magnitude, affected actor, and second-order supply-chain implications
 
 Current production weights:
 
@@ -78,6 +80,25 @@ effectively tied objective scores but materially different weights, the selected
 profile falls back to the current baseline. The same report also evaluates
 event-alpha `source_weights` and `event_type_weights` with rank IC plus top/bottom
 spread; config changes remain manual after review.
+
+## News Routing
+
+ASCR v1.8 routes headlines through a deterministic `quant_score` before Gemini or
+Sonnet analysis. The router keeps concrete, material events such as contracts,
+guidance changes, SEC filings, customer wins/losses, funding or dilution, supply
+disruptions, major counterparty events, and explicit magnitude.
+
+Low-value items are filtered early: generic analyst notes, "best AI stocks"
+articles, vague AI hype, syndicated market recaps, and generic 13F notices that
+do not name a position change.
+
+Default controls:
+
+```bash
+ASCR_PREFILTER_MIN_SCORE=50
+ASCR_PREFILTER_MAX_PER_BATCH=12
+ASCR_RELEVANT_MAX_PER_RUN=45
+```
 
 ## Backtest Snapshot
 

@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.8.0 - Quant-Style News Routing
+
+- Added a deterministic headline `quant_score` before deep LLM analysis
+- Prioritized material, incremental events: contracts, guidance, SEC filings, customer changes, funding/dilution, supply disruptions, and major counterparty signals
+- Filtered low-value news before LLM calls: generic analyst notes, best-stock lists, vague AI hype, syndicated recaps, and generic 13F notices
+- Added pre-analysis caps via `ASCR_PREFILTER_MIN_SCORE`, `ASCR_PREFILTER_MAX_PER_BATCH`, and `ASCR_RELEVANT_MAX_PER_RUN`
+- Passed quant score and routing reason into Gemini/Sonnet analysis context
+- Updated the event daemon to use the quant router directly instead of double-filtering with the old keyword prefilter
+- Added unit coverage for material news retention, generic 13F suppression, ranking, and caps
+
+Validation:
+
+- ASCR targeted tests passed
+- Python source compile checks passed
+
 ## v1.7.0 - Operational Health And Quote Reporting
 
 - Upgraded ASCR weekly health checks to report full-universe coverage separately from latest single-ticker updates

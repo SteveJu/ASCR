@@ -42,12 +42,25 @@ ASCR should be cheap to run because most work is done before calling an LLM:
 
 ```text
 fetch public data
--> Python keyword prefilter
+-> quant headline scoring
 -> deduplicate by hash
--> batch filter only likely-relevant items
+-> batch filter only material, likely-incremental items
 -> deep LLM analysis only on high-value candidates
 -> log token usage and cost
 ```
+
+## News-Routing Controls
+
+The v1.8 headline router can be tuned from the environment:
+
+```bash
+ASCR_PREFILTER_MIN_SCORE=50
+ASCR_PREFILTER_MAX_PER_BATCH=12
+ASCR_RELEVANT_MAX_PER_RUN=45
+```
+
+Raise `ASCR_PREFILTER_MIN_SCORE` to reduce noise. Lower it when you prefer
+broader discovery and are willing to spend more LLM budget.
 
 ## LLM Usage Logging
 
@@ -78,6 +91,7 @@ ORDER BY cost DESC;
 
 - cap articles per scan
 - deduplicate headlines before LLM calls
+- use quant headline scoring before LLM calls
 - use cheaper models for filtering
 - use stronger models only for high-impact events
 - log every successful LLM call
@@ -96,4 +110,3 @@ If a token leaks:
 4. confirm the old token no longer works
 
 Never paste a real token into an issue, README, screenshot, or commit.
-

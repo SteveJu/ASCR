@@ -1,4 +1,4 @@
-# ASCR v1.7 — Public Design Document
+# ASCR v1.8 — Public Design Document
 
 ## 1. Philosophy
 
@@ -24,8 +24,8 @@
 
 ```
 Fetch (Python, free)
-  → Python pre-filter (keyword match)
-  → Haiku 4.5 filter when Python pre-filter leaves too many candidates
+  → Quant headline pre-score (materiality, surprise, magnitude, actor, noise)
+  → Haiku 4.5 filter only as a tie-break when too many candidates remain
   → Gemini deep analysis (structured output; Flash fallback)
     Output: {ticker, verdict, conviction, evidence_delta, thesis, moat, catalyst, bull_case, bear_case}
   → Store to SQLite (INSERT OR IGNORE, hash dedup)
@@ -39,6 +39,9 @@ Fetch (Python, free)
 - Active 9:00 AM - 4:30 PM ET, Mon-Fri
 - 15-minute poll cycles
 - Article-level hash cache (`data/seen_articles_YYYY-MM-DD.txt`) prevents re-processing
+- Quant scoring ranks news by materiality before LLM calls:
+  contracts, guidance, SEC filings, customer changes, funding/dilution, supply disruption, and major counterparty signals
+- Generic analyst notes, best-stock lists, vague AI hype, syndicated recaps, and generic 13F notices are filtered before deep analysis
 - On actionable event: triggers ASCR-H via subprocess
 - Cost model: fetch is free, dedup is free, LLM only fires on genuinely new events
 
@@ -46,19 +49,19 @@ Fetch (Python, free)
 
 ### Scoring
 
-ASCR v1.7 uses a three-layer scoring stack:
+ASCR v1.8 uses a three-layer scoring stack:
 
 1. Base factor context: evidence, asymmetry, momentum, risk.
 2. Event alpha: fresh structured events adjust evidence/asymmetry/risk using source quality, event type, confidence, verdict, conviction, novelty, decay, and priced-in discount.
 3. Feedback alpha: optional ASCR-H outcome feedback adds small bounded adjustments with sample-size shrinkage.
 
-v1.7 keeps the calibration stability guard: if the top grid candidates have
+v1.8 keeps the calibration stability guard: if the top grid candidates have
 effectively tied objective scores but materially different weights, the selected
 profile falls back to the current baseline. Event-alpha source and event-type
 weights are evaluated through the same IC/spread calibration path. Event analysis
 defaults to `gemini-3.1-flash-lite`, overridable with `ASCR_EVENT_MODEL`.
 
-v1.7 also tightens operational reporting: weekly health checks report latest
+v1.8 also keeps operational reporting: weekly health checks report latest
 versus full-universe coverage for prices and scores, flag stale full coverage,
 and treat launchd nonzero last exits as failures instead of silently reporting
 loaded jobs as healthy.
