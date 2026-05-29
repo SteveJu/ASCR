@@ -20,10 +20,13 @@ def test_position_status_rows_use_quote_previous_close():
         assert ticker == "VRT"
         return {"price": 110.0, "previous_close": 100.0}
 
-    rows, total_value, total_prev_value = _position_status_rows(positions, quote_func=fake_quote)
+    rows, total_value, total_prev_value, prev_close_count = _position_status_rows(
+        positions, quote_func=fake_quote
+    )
 
     assert total_value == 1100
     assert total_prev_value == 1000
+    assert prev_close_count == 1
     assert "+10.0%" in rows[0]
     assert "+120.0%" in rows[0]
 

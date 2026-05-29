@@ -2,6 +2,7 @@
 import sys
 import os
 import argparse
+from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -16,6 +17,7 @@ def _position_status_rows(positions, quote_func=get_live_quote):
     rows = []
     total_value = 0
     total_prev_value = 0
+    prev_close_count = 0
     for position in positions:
         quote = quote_func(position["ticker"])
         qty = position["quantity"]
@@ -26,6 +28,7 @@ def _position_status_rows(positions, quote_func=get_live_quote):
         pnl = (value - cost) / cost * 100 if cost > 0 else 0
         prev_close = quote.get("previous_close")
         if prev_close and prev_close > 0 and price > 0:
+            prev_close_count += 1
             day_pct = (price - prev_close) / prev_close * 100
             day = f"{day_pct:+.1f}%"
             total_prev_value += qty * prev_close
@@ -37,7 +40,18 @@ def _position_status_rows(positions, quote_func=get_live_quote):
             f"${value:9,.0f} {pnl:+7.1f}% {day:>8s}"
         )
         total_value += value
-    return rows, total_value, total_prev_value
+    return rows, total_value, total_prev_value, prev_close_count
+
+
+def _previous_equity_total(today=None):
+    today = today or datetime.now().strftime("%Y-%m-%d")
+    with db.get_conn() as conn:
+        row = conn.execute(
+            "SELECT total_equity FROM paper_equity_curve WHERE date < ? "
+            "ORDER BY date DESC LIMIT 1",
+            (today,),
+        ).fetchone()
+    return row["total_equity"] if row else None
 
 
 def cmd_init(args):
@@ -314,12 +328,15 @@ def cmd_status(args):
         return
     status = update_portfolio()
     positions = db.get_all_positions()
-    rows, live_pos_value, prev_pos_value = _position_status_rows(positions)
+    rows, live_pos_value, prev_pos_value, prev_close_count = _position_status_rows(positions)
     positions_value = live_pos_value if positions else status["positions_value"]
     total_equity = status["cash"] + positions_value
-    prev_total = status["cash"] + prev_pos_value
-    day_pct = (total_equity - prev_total) / prev_total * 100 if prev_total > 0 else 0
-    day_dollar = total_equity - prev_total
+    if prev_close_count > 0:
+        prev_total = status["cash"] + prev_pos_value
+    else:
+        prev_total = _previous_equity_total()
+    day_pct = (total_equity - prev_total) / prev_total * 100 if prev_total and prev_total > 0 else 0
+    day_dollar = total_equity - prev_total if prev_total else 0
     print(f"\n\n💰 Cash: ${status['cash']:,.0f}")
     print(f"\n📊 Positions: ${positions_value:,.0f} ({status['num_positions']} open)")
     print(f"\n💎 Total: ${total_equity:,.0f}")

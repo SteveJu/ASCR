@@ -58,13 +58,17 @@ def get_live_quote(ticker: str) -> dict:
         logger.warning(f"quote_yfinance_failed ticker={ticker} error={exc}")
 
     try:
-        prices = db.read_radar_prices(ticker, days=1)
+        prices = db.read_radar_prices(ticker, days=2)
     except Exception as exc:
         logger.warning(f"quote_fallback_db_failed ticker={ticker} error={exc}")
         prices = []
     price = prices[0]["close"] if prices else 0.0
+    prev_close = prices[1]["close"] if len(prices) >= 2 else None
     if price and price > 0:
-        quote = {"price": float(price), "previous_close": None}
+        quote = {
+            "price": float(price),
+            "previous_close": float(prev_close) if prev_close and prev_close > 0 else None,
+        }
         _quote_cache[ticker] = (quote, now)
         logger.info(f"quote_fallback_db ticker={ticker} price=${price:.2f}")
     else:
