@@ -54,6 +54,24 @@ event_alpha:
     MEDIUM: 0.70
     LOW: 0.40
 
+# Valuation overlay is a bounded sanity check, not a full DCF or value screen.
+# P/E is intentionally weak because ASCR is designed to find high-risk,
+# early re-rating candidates. Sales, enterprise value, and cash-flow multiples
+# carry more weight when deciding whether an event is already priced in.
+valuation:
+  enabled: true
+  max_evidence_adjustment: 6
+  max_asymmetry_adjustment: 18
+  max_risk_adjustment: 20
+
+# Business quality overlay distinguishes "benefits from an AI supply-chain event"
+# from "is a durable business worth researching." Missing fields are neutral.
+business_quality:
+  enabled: true
+  max_evidence_adjustment: 10
+  max_asymmetry_adjustment: 8
+  max_risk_adjustment: 18
+
 # Feedback alpha uses ASCR-H decision logs and ASCR experience logs.
 # It is deliberately bounded and shrinkage-weighted: logs inform scoring, but
 # do not override fresh evidence.

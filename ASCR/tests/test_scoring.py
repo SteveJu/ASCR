@@ -10,6 +10,8 @@ from src.scoring import (
     _risk_score,
     _evidence_score_basic,
     _event_alpha_score,
+    _valuation_overlay,
+    _business_quality_overlay,
 )
 
 def test_asymmetry_small_cap():
@@ -96,10 +98,94 @@ def test_event_alpha_penalizes_priced_in_duplicate_news():
     assert details["used_events"] == 2
     print(f"✅ Event alpha duplicate discount: {adj} {details}")
 
+def test_valuation_overlay_penalizes_extreme_multiples():
+    info = {
+        "forward_pe": 85,
+        "price_to_sales": 18,
+        "ev_to_sales": 22,
+        "ev_to_ebitda": 48,
+        "market_cap": 100e9,
+        "free_cashflow": 1e9,
+    }
+    adj, details = _valuation_overlay("TEST", info)
+    assert adj["asymmetry"] < 0, f"Extreme multiples should reduce asymmetry, got {adj}"
+    assert adj["risk"] > 0, f"Extreme multiples should increase risk, got {adj}"
+    assert details["label"] in ("premium", "extreme_premium")
+    print(f"✅ Valuation premium penalty: {adj} {details}")
+
+def test_valuation_overlay_rewards_reasonable_cash_flow():
+    info = {
+        "forward_pe": 18,
+        "price_to_sales": 3,
+        "ev_to_sales": 3.5,
+        "ev_to_ebitda": 12,
+        "market_cap": 20e9,
+        "free_cashflow": 1.2e9,
+    }
+    adj, details = _valuation_overlay("TEST", info)
+    assert adj["asymmetry"] > 0, f"Reasonable valuation should support asymmetry, got {adj}"
+    assert adj["risk"] <= 0, f"Reasonable valuation should not add risk, got {adj}"
+    assert details["label"] == "discount"
+    print(f"✅ Valuation support: {adj} {details}")
+
+def test_valuation_overlay_does_not_over_penalize_high_pe_alone():
+    info = {"forward_pe": 95}
+    adj, details = _valuation_overlay("TEST", info)
+    assert adj["asymmetry"] >= -4, f"High P/E alone should be weak signal, got {adj}"
+    assert adj["risk"] <= 4, f"High P/E alone should not dominate risk, got {adj}"
+    assert details["pe_deemphasized"] is True
+    assert details["label"] == "reasonable"
+    print(f"✅ P/E de-emphasized: {adj} {details}")
+
+def test_business_quality_penalizes_weak_levered_company():
+    info = {
+        "gross_margin": 0.12,
+        "operating_margin": -0.08,
+        "profit_margin": -0.10,
+        "revenue": 1e9,
+        "free_cashflow": -100e6,
+        "total_debt": 1.5e9,
+        "total_cash": 100e6,
+        "ebitda": 100e6,
+        "return_on_equity": -0.20,
+        "revenue_growth": -0.05,
+    }
+    adj, details = _business_quality_overlay("TEST", info)
+    assert details["quality_score"] < 35, f"Weak business should score poor, got {details}"
+    assert adj["evidence"] < 0, f"Weak quality should reduce evidence, got {adj}"
+    assert adj["risk"] > 0, f"Weak quality should increase risk, got {adj}"
+    assert details["label"] == "poor"
+    print(f"✅ Business quality penalty: {adj} {details}")
+
+def test_business_quality_rewards_cash_generative_company():
+    info = {
+        "gross_margin": 0.55,
+        "operating_margin": 0.27,
+        "profit_margin": 0.18,
+        "revenue": 2e9,
+        "free_cashflow": 500e6,
+        "total_debt": 500e6,
+        "total_cash": 1e9,
+        "ebitda": 700e6,
+        "return_on_equity": 0.28,
+        "revenue_growth": 0.30,
+    }
+    adj, details = _business_quality_overlay("TEST", info)
+    assert details["quality_score"] >= 80, f"Strong business should score excellent, got {details}"
+    assert adj["evidence"] > 0, f"Strong quality should support evidence, got {adj}"
+    assert adj["risk"] < 0, f"Strong quality should reduce risk, got {adj}"
+    assert details["label"] == "excellent"
+    print(f"✅ Business quality support: {adj} {details}")
+
 if __name__ == "__main__":
     test_asymmetry_small_cap()
     test_risk_high_debt()
     test_evidence_strong_growth()
     test_event_alpha_rewards_fresh_high_confidence_contract()
     test_event_alpha_penalizes_priced_in_duplicate_news()
+    test_valuation_overlay_penalizes_extreme_multiples()
+    test_valuation_overlay_rewards_reasonable_cash_flow()
+    test_valuation_overlay_does_not_over_penalize_high_pe_alone()
+    test_business_quality_penalizes_weak_levered_company()
+    test_business_quality_rewards_cash_generative_company()
     print("\nAll scoring tests passed! ✅")

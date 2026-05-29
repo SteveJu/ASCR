@@ -155,10 +155,10 @@ def cmd_explain(args):
     if latest.get("details_json"):
         details = json.loads(latest["details_json"])
         print("\n  --- Details ---")
-        for dim in ["evidence", "asymmetry", "momentum", "risk"]:
+        for dim in ["evidence", "asymmetry", "momentum", "risk", "valuation", "business_quality"]:
             d = details.get(dim, {})
             if d:
-                print(f"  {dim.title()}:")
+                print(f"  {dim.replace('_', ' ').title()}:")
                 for k, v in d.items():
                     if k != "note":
                         print(f"    {k}: {v}")

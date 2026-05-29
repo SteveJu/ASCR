@@ -2,7 +2,7 @@
 
 AI Supply Chain Stock Opportunity Discovery & Position Exit System.
 
-Event-driven signal detection for AI supply chain stocks. Scans news, SEC filings, insider trades, and social sentiment in real-time. Generates buy/sell recommendations via LLM analysis. Pure signal intelligence — no auto-trading.
+Event-driven signal detection for AI supply chain stocks. Scans news, SEC filings, insider trades, and social sentiment in real-time. Generates high-risk research priorities and buy/sell signal candidates via LLM-assisted analysis. Pure signal intelligence — no auto-trading.
 
 ## Architecture
 
@@ -48,6 +48,8 @@ ASCR v1.8 keeps the validated scoring stack and adds quant-style news routing be
 
 - base dimensions: evidence, asymmetry, momentum, risk
 - event alpha: time-decayed, source-weighted public events with confidence, verdict, conviction, and priced-in adjustment
+- valuation overlay: bounded sanity check using P/S, EV/Sales, EV/EBITDA, and price/free-cash-flow; P/E is deliberately weak because ASCR targets high-risk re-rating candidates
+- business-quality overlay: bounded filter for margins, cash generation, ROE, leverage, and growth quality
 - feedback alpha: optional ASCR-H outcome feedback with sample-size shrinkage and hard caps
 - calibration: grid search against score/forward-return pairs
 - ablation: strict as-of comparison of baseline, calibrated, feedback, and combined scoring variants
@@ -67,6 +69,10 @@ risk: -0.10
 ```
 
 Regime-specific scoring overrides are pinned to the same validated profile until they have separate as-of validation.
+
+ASCR should be read as a signal radar and research trigger, not a standalone
+fundamental portfolio decision engine. Valuation and quality overlays are
+sanity checks that temper event-driven signals; they are not hard filters.
 
 Run local validation after generating your own local DBs:
 

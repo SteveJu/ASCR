@@ -42,6 +42,19 @@ You can either:
 
 Do not include personal position state, private annotations, or operational logs in the universe file.
 
+## Scoring Policy
+
+`ASCR/config/scoring.yaml` controls bounded scoring overlays:
+
+- `event_alpha`: source/type/confidence/event-decay adjustments from structured public events
+- `valuation`: valuation sanity checks, with P/E intentionally de-emphasized for high-risk re-rating candidates
+- `business_quality`: margins, cash generation, ROE, leverage, and growth quality
+- `feedback_alpha`: optional ASCR-H outcome feedback with sample-size shrinkage
+
+The valuation and quality overlays are research-prioritization checks. They
+should not be treated as a complete fundamental valuation model or hard
+portfolio decision engine.
+
 ## Localization Policy
 
 Public ASCR documentation and default bot text should use English first.

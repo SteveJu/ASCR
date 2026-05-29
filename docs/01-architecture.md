@@ -62,6 +62,7 @@ That separation also lets users replace one side without rewriting the other. Fo
 News / SEC / prices / fundamentals
   -> ASCR event pipeline
   -> quant headline routing
+  -> valuation and business-quality sanity checks
   -> SQLite event and score tables
   -> recommender.get_portfolio_instructions()
   -> ASCR-H daily or intraday run
@@ -104,6 +105,22 @@ The router scores:
 
 Only high-scoring items move on to Gemini/Sonnet analysis. This keeps the event
 store focused on information that could plausibly change expectations.
+
+## Fundamental Overlays
+
+ASCR is built for high-risk AI supply-chain opportunity discovery, not a
+conservative value screen. P/E is therefore a weak signal: many early re-rating
+candidates have noisy, depressed, or negative earnings before the thesis becomes
+visible in income statements.
+
+The scoring engine uses bounded overlays instead:
+
+- valuation sanity checks: P/S, EV/Sales, EV/EBITDA, and price/free-cash-flow
+- business quality: margins, free-cash-flow margin, ROE, growth quality, and
+  net debt/EBITDA
+
+These overlays adjust evidence/asymmetry/risk after event alpha. They are meant
+to prioritize research, not to auto-reject high-risk stocks.
 
 ## Local First
 

@@ -1,5 +1,6 @@
 """Scoring engine V2 — Evidence, Asymmetry, Momentum, Risk + rating + tracking_priority."""
 import json
+import math
 from datetime import datetime
 from src import config, db
 from src.price_fetcher import get_ticker_info
@@ -12,6 +13,306 @@ logger = get_logger("scoring")
 
 def _clamp(value: float, low: float = 0, high: float = 100) -> float:
     return max(low, min(high, value))
+
+
+def _safe_float(info: dict, *keys):
+    for key in keys:
+        value = info.get(key)
+        if value is None:
+            continue
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(value):
+            return value
+    return None
+
+
+def _fmt_pct(value: float) -> str:
+    return f"{value * 100:.1f}%"
+
+
+def _fmt_multiple(value: float) -> str:
+    return f"{value:.1f}x"
+
+
+def _cap_adjustments(adjustments: dict, cfg: dict, defaults: dict) -> dict:
+    capped = {}
+    for key, default_limit in defaults.items():
+        limit = abs(float(cfg.get(f"max_{key}_adjustment", default_limit)))
+        capped[key] = max(-limit, min(limit, adjustments.get(key, 0.0)))
+    return capped
+
+
+def _valuation_overlay(ticker: str, info: dict, valuation_cfg: dict = None) -> tuple:
+    """Estimate whether event upside is already priced into valuation.
+
+    This is deliberately a bounded overlay. It does not try to produce a full
+    intrinsic value; it only adds valuation support for reasonable multiples and
+    penalizes extreme multiples where good news is likely already discounted.
+    P/E is intentionally weak here because this radar is meant to find high-risk,
+    early re-rating candidates where earnings may be temporarily depressed.
+    """
+    valuation_cfg = valuation_cfg or {}
+    adjustments = {"evidence": 0.0, "asymmetry": 0.0, "risk": 0.0}
+    details = {"metrics": {}, "available_metrics": 0, "pe_deemphasized": True}
+
+    def add_metric(name, value, label, asymmetry_adj=0, risk_adj=0, evidence_adj=0):
+        details["metrics"][name] = f"{_fmt_multiple(value)} ({label})"
+        details["available_metrics"] += 1
+        adjustments["asymmetry"] += asymmetry_adj
+        adjustments["risk"] += risk_adj
+        adjustments["evidence"] += evidence_adj
+
+    forward_pe = _safe_float(info, "forward_pe")
+    trailing_pe = _safe_float(info, "pe_ratio", "trailing_pe")
+    if forward_pe and forward_pe > 0:
+        if forward_pe <= 20:
+            add_metric("forward_pe", forward_pe, "supportive", asymmetry_adj=2)
+        elif forward_pe <= 35:
+            add_metric("forward_pe", forward_pe, "neutral")
+        elif forward_pe <= 60:
+            add_metric("forward_pe", forward_pe, "high but tolerated")
+        elif forward_pe <= 100:
+            add_metric("forward_pe", forward_pe, "expensive", asymmetry_adj=-2, risk_adj=2)
+        else:
+            add_metric("forward_pe", forward_pe, "extreme", asymmetry_adj=-4, risk_adj=4)
+    elif trailing_pe and trailing_pe > 0:
+        if trailing_pe <= 25:
+            add_metric("trailing_pe", trailing_pe, "supportive", asymmetry_adj=1)
+        elif trailing_pe <= 50:
+            add_metric("trailing_pe", trailing_pe, "neutral")
+        elif trailing_pe <= 90:
+            add_metric("trailing_pe", trailing_pe, "expensive", asymmetry_adj=-2, risk_adj=2)
+        else:
+            add_metric("trailing_pe", trailing_pe, "extreme", asymmetry_adj=-4, risk_adj=4)
+
+    price_to_sales = _safe_float(info, "price_to_sales", "price_sales")
+    if price_to_sales and price_to_sales > 0:
+        if price_to_sales <= 4:
+            add_metric("price_to_sales", price_to_sales, "discount", asymmetry_adj=5)
+        elif price_to_sales <= 8:
+            add_metric("price_to_sales", price_to_sales, "reasonable")
+        elif price_to_sales <= 15:
+            add_metric("price_to_sales", price_to_sales, "premium", asymmetry_adj=-5, risk_adj=5)
+        else:
+            add_metric("price_to_sales", price_to_sales, "extreme", asymmetry_adj=-9, risk_adj=9)
+
+    ev_to_sales = _safe_float(info, "ev_to_sales", "enterprise_to_revenue")
+    if ev_to_sales and ev_to_sales > 0:
+        if ev_to_sales <= 4:
+            add_metric("ev_to_sales", ev_to_sales, "discount", asymmetry_adj=5)
+        elif ev_to_sales <= 8:
+            add_metric("ev_to_sales", ev_to_sales, "reasonable")
+        elif ev_to_sales <= 15:
+            add_metric("ev_to_sales", ev_to_sales, "premium", asymmetry_adj=-5, risk_adj=6)
+        else:
+            add_metric("ev_to_sales", ev_to_sales, "extreme", asymmetry_adj=-10, risk_adj=10)
+
+    ev_to_ebitda = _safe_float(info, "ev_to_ebitda", "enterprise_to_ebitda")
+    if ev_to_ebitda and ev_to_ebitda > 0:
+        if ev_to_ebitda <= 15:
+            add_metric("ev_to_ebitda", ev_to_ebitda, "discount", asymmetry_adj=5)
+        elif ev_to_ebitda <= 25:
+            add_metric("ev_to_ebitda", ev_to_ebitda, "reasonable")
+        elif ev_to_ebitda <= 40:
+            add_metric("ev_to_ebitda", ev_to_ebitda, "premium", asymmetry_adj=-5, risk_adj=5)
+        else:
+            add_metric("ev_to_ebitda", ev_to_ebitda, "expensive", asymmetry_adj=-9, risk_adj=8)
+
+    market_cap = _safe_float(info, "market_cap")
+    free_cashflow = _safe_float(info, "free_cashflow", "free_cash_flow")
+    if market_cap and market_cap > 0 and free_cashflow and free_cashflow > 0:
+        p_fcf = market_cap / free_cashflow
+        if p_fcf <= 25:
+            add_metric("price_to_fcf", p_fcf, "discount", asymmetry_adj=5, evidence_adj=2)
+        elif p_fcf <= 50:
+            add_metric("price_to_fcf", p_fcf, "reasonable")
+        elif p_fcf <= 80:
+            add_metric("price_to_fcf", p_fcf, "premium", asymmetry_adj=-4, risk_adj=5)
+        else:
+            add_metric("price_to_fcf", p_fcf, "extreme", asymmetry_adj=-8, risk_adj=8)
+
+    if details["available_metrics"] == 0:
+        details["label"] = "no_data"
+        details["adjustments"] = {"evidence": 0.0, "asymmetry": 0.0, "risk": 0.0}
+        details["note"] = "No valuation multiples available."
+        return details["adjustments"], details
+
+    adjustments = _cap_adjustments(adjustments, valuation_cfg, {
+        "evidence": 6,
+        "asymmetry": 18,
+        "risk": 20,
+    })
+
+    if adjustments["risk"] >= 15 or adjustments["asymmetry"] <= -15:
+        label = "extreme_premium"
+    elif adjustments["risk"] >= 8 or adjustments["asymmetry"] <= -8:
+        label = "premium"
+    elif adjustments["asymmetry"] >= 10 and adjustments["risk"] <= 0:
+        label = "discount"
+    else:
+        label = "reasonable"
+
+    details["label"] = label
+    details["adjustments"] = {k: round(v, 2) for k, v in adjustments.items()}
+    return adjustments, details
+
+
+def _business_quality_overlay(ticker: str, info: dict, quality_cfg: dict = None) -> tuple:
+    """Score business quality so weak beneficiaries do not outrank good businesses.
+
+    Uses available current fundamentals only. Missing fields are neutral; the
+    overlay becomes active only when at least one quality metric is available.
+    """
+    quality_cfg = quality_cfg or {}
+    raw_score = 50.0
+    metrics_used = 0
+    details = {"factors": {}, "metrics_used": 0}
+
+    def add_factor(name, display, delta):
+        nonlocal raw_score, metrics_used
+        raw_score += delta
+        metrics_used += 1
+        sign = "+" if delta > 0 else ""
+        details["factors"][name] = f"{display} ({sign}{delta:.0f})"
+
+    gross_margin = _safe_float(info, "gross_margin")
+    if gross_margin is not None:
+        if gross_margin >= 0.50:
+            add_factor("gross_margin", _fmt_pct(gross_margin), 12)
+        elif gross_margin >= 0.35:
+            add_factor("gross_margin", _fmt_pct(gross_margin), 8)
+        elif gross_margin >= 0.20:
+            add_factor("gross_margin", _fmt_pct(gross_margin), 0)
+        elif gross_margin >= 0:
+            add_factor("gross_margin", _fmt_pct(gross_margin), -8)
+        else:
+            add_factor("gross_margin", _fmt_pct(gross_margin), -16)
+
+    operating_margin = _safe_float(info, "operating_margin")
+    if operating_margin is not None:
+        if operating_margin >= 0.25:
+            add_factor("operating_margin", _fmt_pct(operating_margin), 14)
+        elif operating_margin >= 0.10:
+            add_factor("operating_margin", _fmt_pct(operating_margin), 8)
+        elif operating_margin >= 0:
+            add_factor("operating_margin", _fmt_pct(operating_margin), -4)
+        else:
+            add_factor("operating_margin", _fmt_pct(operating_margin), -14)
+
+    profit_margin = _safe_float(info, "profit_margin")
+    if profit_margin is not None:
+        if profit_margin >= 0.15:
+            add_factor("profit_margin", _fmt_pct(profit_margin), 10)
+        elif profit_margin >= 0.05:
+            add_factor("profit_margin", _fmt_pct(profit_margin), 5)
+        elif profit_margin >= 0:
+            add_factor("profit_margin", _fmt_pct(profit_margin), 0)
+        else:
+            add_factor("profit_margin", _fmt_pct(profit_margin), -10)
+
+    revenue = _safe_float(info, "revenue")
+    free_cashflow = _safe_float(info, "free_cashflow", "free_cash_flow")
+    if revenue and revenue > 0 and free_cashflow is not None:
+        fcf_margin = free_cashflow / revenue
+        details["fcf_margin"] = _fmt_pct(fcf_margin)
+        if fcf_margin >= 0.15:
+            add_factor("fcf_margin_quality", _fmt_pct(fcf_margin), 14)
+        elif fcf_margin >= 0.05:
+            add_factor("fcf_margin_quality", _fmt_pct(fcf_margin), 8)
+        elif fcf_margin >= 0:
+            add_factor("fcf_margin_quality", _fmt_pct(fcf_margin), 0)
+        else:
+            add_factor("fcf_margin_quality", _fmt_pct(fcf_margin), -14)
+
+    return_on_equity = _safe_float(info, "return_on_equity", "roe")
+    if return_on_equity is not None:
+        if return_on_equity >= 0.25:
+            add_factor("return_on_equity", _fmt_pct(return_on_equity), 10)
+        elif return_on_equity >= 0.10:
+            add_factor("return_on_equity", _fmt_pct(return_on_equity), 5)
+        elif return_on_equity >= 0:
+            add_factor("return_on_equity", _fmt_pct(return_on_equity), 0)
+        else:
+            add_factor("return_on_equity", _fmt_pct(return_on_equity), -10)
+
+    total_debt = _safe_float(info, "total_debt")
+    total_cash = _safe_float(info, "total_cash")
+    ebitda = _safe_float(info, "ebitda")
+    if total_debt is not None or total_cash is not None or ebitda is not None:
+        debt = total_debt or 0.0
+        cash = total_cash or 0.0
+        net_debt = debt - cash
+        details["net_debt"] = round(net_debt, 2)
+        if ebitda is not None and ebitda > 0:
+            net_debt_ebitda = net_debt / ebitda
+            details["net_debt_ebitda"] = _fmt_multiple(net_debt_ebitda)
+            if net_debt_ebitda <= 0:
+                add_factor("net_debt_ebitda", _fmt_multiple(net_debt_ebitda), 12)
+            elif net_debt_ebitda <= 2:
+                add_factor("net_debt_ebitda", _fmt_multiple(net_debt_ebitda), 8)
+            elif net_debt_ebitda <= 4:
+                add_factor("net_debt_ebitda", _fmt_multiple(net_debt_ebitda), 0)
+            elif net_debt_ebitda <= 6:
+                add_factor("net_debt_ebitda", _fmt_multiple(net_debt_ebitda), -10)
+            else:
+                add_factor("net_debt_ebitda", _fmt_multiple(net_debt_ebitda), -18)
+        elif ebitda is not None and net_debt > 0:
+            add_factor("net_debt_ebitda", "positive net debt / no EBITDA", -12)
+        elif ebitda is not None:
+            add_factor("net_debt_ebitda", "net cash / no EBITDA", 4)
+
+    revenue_growth = _safe_float(info, "revenue_growth")
+    if revenue_growth is not None:
+        if revenue_growth >= 0.25:
+            add_factor("revenue_growth_quality", _fmt_pct(revenue_growth), 6)
+        elif revenue_growth < 0:
+            add_factor("revenue_growth_quality", _fmt_pct(revenue_growth), -8)
+        else:
+            add_factor("revenue_growth_quality", _fmt_pct(revenue_growth), 0)
+
+    if metrics_used == 0:
+        adjustments = {"evidence": 0.0, "asymmetry": 0.0, "risk": 0.0}
+        details.update({
+            "quality_score": None,
+            "label": "no_data",
+            "adjustments": adjustments,
+            "note": "No business quality metrics available.",
+        })
+        return adjustments, details
+
+    quality_score = _clamp(raw_score)
+    if quality_score >= 80:
+        label = "excellent"
+        adjustments = {"evidence": 6.0, "asymmetry": 2.0, "risk": -10.0}
+    elif quality_score >= 65:
+        label = "good"
+        adjustments = {"evidence": 3.0, "asymmetry": 0.0, "risk": -5.0}
+    elif quality_score >= 50:
+        label = "adequate"
+        adjustments = {"evidence": 0.0, "asymmetry": 0.0, "risk": 0.0}
+    elif quality_score >= 35:
+        label = "weak"
+        adjustments = {"evidence": -4.0, "asymmetry": -3.0, "risk": 8.0}
+    else:
+        label = "poor"
+        adjustments = {"evidence": -8.0, "asymmetry": -7.0, "risk": 16.0}
+
+    adjustments = _cap_adjustments(adjustments, quality_cfg, {
+        "evidence": 10,
+        "asymmetry": 8,
+        "risk": 18,
+    })
+
+    details.update({
+        "metrics_used": metrics_used,
+        "quality_score": round(quality_score, 1),
+        "label": label,
+        "adjustments": {k: round(v, 2) for k, v in adjustments.items()},
+    })
+    return adjustments, details
 
 
 def _parse_event_date(event: dict):
@@ -424,6 +725,24 @@ def compute_scores(tickers: list = None):
                 asymmetry = _clamp(asymmetry + event_adj["asymmetry"])
                 risk = _clamp(risk + event_adj["risk"])
 
+            valuation_details = {"enabled": False}
+            valuation_cfg = cfg.get("valuation", {})
+            if valuation_cfg.get("enabled", True):
+                valuation_adj, valuation_details = _valuation_overlay(ticker, info, valuation_cfg)
+                valuation_details["enabled"] = True
+                evidence = _clamp(evidence + valuation_adj["evidence"])
+                asymmetry = _clamp(asymmetry + valuation_adj["asymmetry"])
+                risk = _clamp(risk + valuation_adj["risk"])
+
+            quality_details = {"enabled": False}
+            quality_cfg = cfg.get("business_quality", {})
+            if quality_cfg.get("enabled", True):
+                quality_adj, quality_details = _business_quality_overlay(ticker, info, quality_cfg)
+                quality_details["enabled"] = True
+                evidence = _clamp(evidence + quality_adj["evidence"])
+                asymmetry = _clamp(asymmetry + quality_adj["asymmetry"])
+                risk = _clamp(risk + quality_adj["risk"])
+
             feedback_details = {"enabled": False}
             feedback_cfg = cfg.get("feedback_alpha", {})
             if feedback_cfg.get("enabled", True):
@@ -457,7 +776,11 @@ def compute_scores(tickers: list = None):
             tracking_priority = compute_tracking_priority(rating, has_position, recent_events[:10])
 
             # Build reason and next_trigger
-            reason = _build_reason(rating, evidence, asymmetry, momentum, risk, info)
+            reason = _build_reason(
+                rating, evidence, asymmetry, momentum, risk, info,
+                valuation_details=valuation_details,
+                quality_details=quality_details,
+            )
             next_trigger = _build_next_trigger(ticker, rating, info)
 
             details = {
@@ -468,6 +791,8 @@ def compute_scores(tickers: list = None):
                 "momentum": mo_details,
                 "risk": ri_details,
                 "event_alpha": event_details,
+                "valuation": valuation_details,
+                "business_quality": quality_details,
                 "feedback_alpha": feedback_details,
             }
 
@@ -500,7 +825,8 @@ def compute_scores(tickers: list = None):
     return results
 
 
-def _build_reason(rating, evidence, asymmetry, momentum, risk, info) -> str:
+def _build_reason(rating, evidence, asymmetry, momentum, risk, info,
+                  valuation_details: dict = None, quality_details: dict = None) -> str:
     """Build human-readable reason for the rating."""
     parts = []
     if evidence >= 70:
@@ -521,6 +847,18 @@ def _build_reason(rating, evidence, asymmetry, momentum, risk, info) -> str:
     rev_growth = info.get("revenue_growth")
     if rev_growth and rev_growth > 0.3:
         parts.append(f"revenue growing {rev_growth*100:.0f}%")
+
+    valuation_label = (valuation_details or {}).get("label")
+    if valuation_label in ("premium", "extreme_premium"):
+        parts.append("valuation premium")
+    elif valuation_label == "discount":
+        parts.append("valuation support")
+
+    quality_label = (quality_details or {}).get("label")
+    if quality_label in ("excellent", "good"):
+        parts.append(f"{quality_label} business quality")
+    elif quality_label in ("weak", "poor"):
+        parts.append(f"{quality_label} business quality")
 
     return "; ".join(parts) if parts else "insufficient data"
 

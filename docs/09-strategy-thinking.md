@@ -72,11 +72,18 @@ Each event gets an `evidence_delta`.
 
 Multiple weak events should not automatically equal one strong thesis. ASCR caps event-count amplification and prefers diverse, specific event types.
 
-The current public scoring stack has three layers:
+The current public scoring stack has five layers:
 
 - base features: evidence, asymmetry, momentum, and risk
 - event alpha: time-decayed, source-weighted public events with verdict, conviction, confidence, and priced-in adjustment
+- valuation overlay: a bounded sanity check that emphasizes P/S, EV/Sales, EV/EBITDA, and price/free-cash-flow more than P/E
+- business-quality overlay: a bounded check on margins, free cash flow, ROE, leverage, and growth quality
 - feedback alpha: optional ASCR-H outcome feedback with sample-size shrinkage and hard caps
+
+This is intentionally not a conservative value strategy. ASCR is meant to find
+high-risk re-rating candidates, so high P/E by itself should not kill a signal.
+The more useful question is whether the event is already priced into sales,
+enterprise value, cash flow, and balance-sheet risk.
 
 Default production weights are currently pinned to the strict as-of ablation winner:
 

@@ -7,7 +7,7 @@
 [![Paper Trading](https://img.shields.io/badge/trading-paper%20only-lightgrey)](#what-it-does-not-do)
 [![Local First](https://img.shields.io/badge/storage-local%20SQLite-green)](#privacy-model)
 
-ASCR is an open-source, local-first research system for studying the AI infrastructure supply chain with event-driven signals and paper trading.
+ASCR is an open-source, local-first research system for studying the AI infrastructure supply chain with event-driven signals, high-risk opportunity discovery, and paper trading.
 
 **Keywords:** AI supply chain, event-driven investing, market intelligence, stock analysis, paper trading, quantitative finance, LLM investing research, SEC filings, backtesting, Telegram bot, SQLite.
 
@@ -65,7 +65,7 @@ ASCR, the brain:
 - routes headlines through a quant-style materiality score before LLM analysis
 - extracts structured events with LLM assistance
 - logs AI API usage and estimated cost
-- scores evidence, asymmetry, momentum, risk, event alpha, and optional feedback alpha
+- scores evidence, asymmetry, momentum, risk, event alpha, valuation sanity checks, business quality, and optional feedback alpha
 - ranks tickers in an AI supply-chain universe
 - outputs buy/sell/hold intent for a paper executor
 
@@ -178,6 +178,23 @@ ASCR_PREFILTER_MIN_SCORE=50
 ASCR_PREFILTER_MAX_PER_BATCH=12
 ASCR_RELEVANT_MAX_PER_RUN=45
 ```
+
+## Fundamental Sanity Checks
+
+ASCR is designed to discover high-risk re-rating candidates, so it is not a
+traditional value screen. P/E is deliberately weak because early-cycle winners
+can have temporarily depressed or noisy earnings.
+
+The scoring engine now uses bounded overlays instead:
+
+- valuation sanity checks: P/S, EV/Sales, EV/EBITDA, and price/free-cash-flow
+  carry more weight than P/E when deciding whether an event is already priced in
+- business quality: margins, free-cash-flow margin, ROE, revenue growth, and
+  net debt/EBITDA help separate durable businesses from weak event beneficiaries
+
+These overlays adjust evidence/asymmetry/risk but do not override fresh event
+evidence. The intended product framing is signal radar and research trigger, not
+a standalone fundamental portfolio decision engine.
 
 ## Quick Start
 

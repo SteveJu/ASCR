@@ -49,11 +49,13 @@ Fetch (Python, free)
 
 ### Scoring
 
-ASCR v1.8 uses a three-layer scoring stack:
+ASCR v1.8 uses a five-layer scoring stack:
 
 1. Base factor context: evidence, asymmetry, momentum, risk.
 2. Event alpha: fresh structured events adjust evidence/asymmetry/risk using source quality, event type, confidence, verdict, conviction, novelty, decay, and priced-in discount.
-3. Feedback alpha: optional ASCR-H outcome feedback adds small bounded adjustments with sample-size shrinkage.
+3. Valuation overlay: P/S, EV/Sales, EV/EBITDA, and price/free-cash-flow temper signals where the event looks already priced in. P/E is intentionally weak because ASCR targets high-risk re-rating candidates.
+4. Business-quality overlay: margins, cash generation, ROE, leverage, and growth quality distinguish durable businesses from weak event beneficiaries.
+5. Feedback alpha: optional ASCR-H outcome feedback adds small bounded adjustments with sample-size shrinkage.
 
 v1.8 keeps the calibration stability guard: if the top grid candidates have
 effectively tied objective scores but materially different weights, the selected
