@@ -8,6 +8,8 @@ ASCR uses local configuration files and environment variables.
 .env                         # local secrets, ignored by git
 config/telegram.yaml          # local Telegram config, ignored by git
 config/universe.yaml          # public or local research universe
+ASCR/config/frontier_domains.yaml # public frontier-domain discovery map
+ASCR/config/chokepoints.yaml      # public watch-only chokepoint research list
 config/telegram.example.yaml  # safe template
 config/universe.sample.yaml   # public sample universe
 ```
@@ -41,6 +43,19 @@ You can either:
 - rename a sanitized version to `config/universe.yaml` and track it publicly
 
 Do not include personal position state, private annotations, or operational logs in the universe file.
+
+## Frontier Radar Policy
+
+`ASCR/config/frontier_domains.yaml` and `ASCR/config/chokepoints.yaml` are
+public research configuration. They define:
+
+- frontier domains and domain-tagged discovery queries
+- bottlenecks, validation signals, and death signals
+- watch-only chokepoint candidates and scoring components
+
+They must not contain private positions, account state, API keys, local paths, or
+personal notes. The frontier radar is discovery-only and should not directly
+trigger recommendations or ASCR-H paper orders.
 
 ## Scoring Policy
 

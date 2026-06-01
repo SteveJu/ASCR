@@ -60,6 +60,7 @@ That separation also lets users replace one side without rewriting the other. Fo
 
 ```text
 News / SEC / prices / fundamentals
+  -> frontier domain and chokepoint discovery
   -> ASCR event pipeline
   -> quant headline routing
   -> valuation and business-quality sanity checks
@@ -92,7 +93,7 @@ Source profiles keep methodology comparisons explicit:
 
 ## News Routing
 
-ASCR v1.8 adds a deterministic headline router before LLM analysis. It is not a
+ASCR includes a deterministic headline router before LLM analysis. It is not a
 prediction model; it is a quality gate that decides which articles deserve
 structured extraction.
 
@@ -105,6 +106,18 @@ The router scores:
 
 Only high-scoring items move on to Gemini/Sonnet analysis. This keeps the event
 store focused on information that could plausibly change expectations.
+
+## Frontier Radar
+
+ASCR v1.9 adds a watch-only frontier radar before the main recommendation path.
+It tracks domain-tagged discovery queries, chokepoint candidates, and thesis
+receipts for AI infrastructure, humanoid robotics, robotics automation,
+commercial space, quantum computing, and frontier energy.
+
+The frontier radar is not an execution path. It does not add tickers to the
+trading universe automatically, does not create buy/sell intent, and does not
+send orders to ASCR-H. Its job is to make early hypotheses visible and auditable
+before a human decides whether they deserve promotion into the main ASCR universe.
 
 ## Fundamental Overlays
 

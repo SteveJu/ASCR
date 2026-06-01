@@ -1,15 +1,15 @@
-"""Sector Discovery — detect emerging AI supply chain sectors via anomaly detection.
+"""Sector Discovery — detect emerging frontier sectors via anomaly detection.
 
 Philosophy:
   We can't predict what the next hot sector is (we didn't know about optical before it happened).
   But we CAN detect anomalies: companies that suddenly appear in AI context when they never did before.
 
 How it works:
-  1. Collect ALL company names mentioned in AI supply chain news (not just our universe)
+  1. Collect ALL company names mentioned in frontier technology news (not just our universe)
   2. Track mention frequency over time in `mention_tracker` table
   3. Detect anomalies: a company that went from 0 mentions -> 3+ mentions in a week
   4. Weekly: send anomaly list to LLM to classify:
-     "Is this a real new supply chain node, or just noise?"
+     "Is this a real new investable bottleneck node, or just noise?"
   5. Report to human for decision
 
 NOT automated universe addition — human decides.
@@ -55,6 +55,42 @@ DISCOVERY_QUERIES = [
     "earnings beat AI demand unexpected revenue",
     "revenue surprise data center AI segment",
 ]
+
+
+def _frontier_query_specs() -> list[dict]:
+    """Load domain-general frontier discovery queries.
+
+    If the config is missing or invalid, the legacy AI supply-chain queries still
+    run so discovery does not fail closed.
+    """
+    try:
+        from src.frontier_domains import discovery_query_specs
+        return discovery_query_specs()
+    except Exception as exc:
+        logger.warning(f"Frontier domain query load failed: {exc}")
+        return []
+
+
+def _discovery_query_specs() -> list[dict]:
+    """Return query specs used by mention scanning."""
+    specs = [{"query": query, "domain_id": "legacy_ai_supply_chain", "domain_name": "Legacy AI supply chain"}
+             for query in DISCOVERY_QUERIES]
+    seen = {spec["query"].lower() for spec in specs}
+    for spec in _frontier_query_specs():
+        query = spec.get("query", "")
+        if query and query.lower() not in seen:
+            specs.append(spec)
+            seen.add(query.lower())
+    return specs
+
+
+def _frontier_prompt_context() -> str:
+    try:
+        from src.frontier_domains import prompt_context
+        return prompt_context()
+    except Exception as exc:
+        logger.warning(f"Frontier prompt context load failed: {exc}")
+        return "- ai_infrastructure: AI infrastructure supply-chain bottlenecks."
 
 
 def _get_known_names() -> set:
@@ -129,6 +165,7 @@ def init_discovery_db():
                 headlines TEXT,
                 llm_assessment TEXT,
                 is_real_signal INTEGER DEFAULT 0,
+                domain_guess TEXT,
                 sector_guess TEXT,
                 thesis TEXT,
                 status TEXT DEFAULT 'new',
@@ -136,6 +173,14 @@ def init_discovery_db():
                 created_at TEXT DEFAULT (datetime('now'))
             )
         """)
+        mention_columns = {row[1] for row in conn.execute("PRAGMA table_info(mention_tracker)").fetchall()}
+        if "context" not in mention_columns:
+            conn.execute("ALTER TABLE mention_tracker ADD COLUMN context TEXT")
+
+        anomaly_columns = {row[1] for row in conn.execute("PRAGMA table_info(discovery_anomalies)").fetchall()}
+        if "domain_guess" not in anomaly_columns:
+            conn.execute("ALTER TABLE discovery_anomalies ADD COLUMN domain_guess TEXT")
+
         conn.execute("CREATE INDEX IF NOT EXISTS idx_mention_company ON mention_tracker(company_name)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_mention_date ON mention_tracker(scan_date)")
 
@@ -270,8 +315,10 @@ def scan_for_new_mentions() -> dict:
     known = _get_known_names()
     mentions = {}
     seen_titles = set()
+    query_specs = _discovery_query_specs()
 
-    for query in DISCOVERY_QUERIES:
+    for spec in query_specs:
+        query = spec["query"]
         try:
             url = f"https://news.google.com/rss/search?q={quote(query)}&hl=en-US&gl=US&ceid=US:en"
             feed = feedparser.parse(url)
@@ -293,6 +340,8 @@ def scan_for_new_mentions() -> dict:
                     mentions[name].append({
                         "headline": title,
                         "query": query,
+                        "domain_id": spec.get("domain_id", ""),
+                        "domain_name": spec.get("domain_name", ""),
                     })
 
             time.sleep(0.3)
@@ -303,13 +352,25 @@ def scan_for_new_mentions() -> dict:
         for company, headlines in mentions.items():
             for h in headlines:
                 conn.execute(
-                    "INSERT INTO mention_tracker (scan_date, company_name, headline, source_query) "
-                    "VALUES (?, ?, ?, ?)",
-                    (today, company, h["headline"], h["query"])
+                    "INSERT INTO mention_tracker (scan_date, company_name, headline, source_query, context) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (
+                        today,
+                        company,
+                        h["headline"],
+                        h["query"],
+                        json.dumps({
+                            "domain_id": h.get("domain_id", ""),
+                            "domain_name": h.get("domain_name", ""),
+                        }),
+                    )
                 )
         conn.commit()
 
-    logger.info(f"Scanned {len(seen_titles)} headlines, found {len(mentions)} non-universe companies")
+    logger.info(
+        f"Scanned {len(seen_titles)} headlines across {len(query_specs)} queries, "
+        f"found {len(mentions)} non-universe companies"
+    )
     return mentions
 
 
@@ -327,7 +388,6 @@ def detect_anomalies(window_days: int = 7, min_mentions: int = 3) -> list[dict]:
     with db.get_conn() as conn:
         recent = conn.execute("""
             SELECT company_name, COUNT(*) as cnt,
-                   GROUP_CONCAT(DISTINCT headline, '|||') as headlines,
                    MIN(scan_date) as first_seen
             FROM mention_tracker
             WHERE scan_date >= ?
@@ -351,7 +411,14 @@ def detect_anomalies(window_days: int = 7, min_mentions: int = 3) -> list[dict]:
                 ).fetchone()
 
                 if not existing:
-                    headlines = (r["headlines"] or "").split("|||")[:5]
+                    headline_rows = conn.execute("""
+                        SELECT DISTINCT headline
+                        FROM mention_tracker
+                        WHERE company_name = ? AND scan_date >= ?
+                        ORDER BY headline
+                        LIMIT 5
+                    """, (company, recent_start)).fetchall()
+                    headlines = [row["headline"] for row in headline_rows]
                     anomalies.append({
                         "company": company,
                         "recent_mentions": r["cnt"],
@@ -364,11 +431,8 @@ def detect_anomalies(window_days: int = 7, min_mentions: int = 3) -> list[dict]:
     return anomalies
 
 
-def assess_anomalies_with_llm(anomalies: list[dict]) -> list[dict]:
-    """Use LLM to assess whether anomalies are real new supply chain nodes."""
-    if not anomalies:
-        return []
-
+def build_anomaly_assessment_prompt(anomalies: list[dict]) -> str:
+    """Build a domain-general anomaly assessment prompt."""
     companies_text = ""
     for i, a in enumerate(anomalies[:10]):
         headlines = "\n    ".join(a["headlines"][:3])
@@ -378,29 +442,36 @@ def assess_anomalies_with_llm(anomalies: list[dict]) -> list[dict]:
     {headlines}
 """
 
-    prompt = f"""You are an AI supply chain analyst. Below are companies that SUDDENLY started appearing in AI/data center news after being absent. Your job is NOT to predict the future — it's to classify whether each company has a REAL, SPECIFIC connection to the AI supply chain.
+    domain_context = _frontier_prompt_context()
+
+    return f"""You are a frontier technology and hard-tech investment analyst. Below are companies that SUDDENLY started appearing in frontier-domain news after being absent. Your job is NOT to predict the future. Classify whether each company has a REAL, SPECIFIC connection to an investable frontier bottleneck, or whether it is just noise.
+
+Configured frontier domains:
+{domain_context}
 
 For each company, answer:
-1. Is this a real new AI supply chain node? (yes/no/unclear)
-2. If yes: what sector? (e.g., "liquid cooling", "power conversion", "advanced packaging", "optical components", etc.)
-3. If yes: what's the thesis? (one sentence)
-4. What's the ticker? (if you know it, otherwise null)
-5. Confidence: high/medium/low
+1. Is this a real new frontier bottleneck node? (yes/no/unclear)
+2. If yes: what configured domain best fits? Use one of the domain ids above when possible.
+3. If yes: what sector or bottleneck? (e.g., "humanoid actuators", "space propulsion", "quantum cryogenics", "power conversion")
+4. If yes: what's the thesis? (one sentence)
+5. What's the ticker? (if you know it, otherwise null)
+6. Confidence: high/medium/low
 
 Companies to assess:
 {companies_text}
 
 IMPORTANT GUIDELINES:
-- "Real" means the company MAKES or SUPPLIES something specifically needed for AI infrastructure
-- A company merely mentioned alongside AI news is NOT a real signal
-- Look for SPECIFIC connections: contracts, supply agreements, component manufacturing
-- Be skeptical — most anomalies are noise. Only flag genuine new supply chain nodes.
+- "Real" means the company MAKES, SUPPLIES, OPERATES, or OWNS something specifically needed for one of the frontier domains.
+- A company merely using AI, robots, space imagery, or quantum language is NOT a real signal.
+- Look for specific validation: contracts, funded programs, supplier awards, backlog, shipments, certifications, capacity expansion, or measurable technical milestones.
+- Be skeptical. Most anomalies are noise. Only flag genuine new bottleneck nodes.
 
 Respond with ONLY valid JSON array:
 [
   {{
     "company": "name",
     "is_real": true/false,
+    "domain": "configured_domain_id or null",
     "sector": "sector name or null",
     "thesis": "one sentence or null",
     "ticker": "TICK or null",
@@ -408,6 +479,14 @@ Respond with ONLY valid JSON array:
     "reasoning": "one sentence why you think this"
   }}
 ]"""
+
+
+def assess_anomalies_with_llm(anomalies: list[dict]) -> list[dict]:
+    """Use LLM to assess whether anomalies are real frontier bottleneck nodes."""
+    if not anomalies:
+        return []
+
+    prompt = build_anomaly_assessment_prompt(anomalies)
 
     try:
         from src.gemini_client import call_gemini
@@ -486,13 +565,15 @@ def run_weekly_discovery() -> dict:
         for i, anomaly in enumerate(anomalies):
             assessment = assessments[i] if i < len(assessments) else {}
             is_real = assessment.get("is_real", False)
+            domain = assessment.get("domain") or assessment.get("sector")
+            sector = assessment.get("sector") or domain
 
             conn.execute("""
                 INSERT INTO discovery_anomalies
                 (detected_date, company_name, ticker_guess, mention_count,
                  first_seen, headlines, llm_assessment, is_real_signal,
-                 sector_guess, thesis, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 domain_guess, sector_guess, thesis, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 datetime.now().strftime("%Y-%m-%d"),
                 anomaly["company"],
@@ -502,7 +583,8 @@ def run_weekly_discovery() -> dict:
                 json.dumps(anomaly["headlines"][:5]),
                 json.dumps(assessment),
                 1 if is_real else 0,
-                assessment.get("sector"),
+                domain,
+                sector,
                 assessment.get("thesis"),
                 "flagged" if is_real else "dismissed",
             ))
@@ -511,7 +593,8 @@ def run_weekly_discovery() -> dict:
                 real_signals.append({
                     "company": anomaly["company"],
                     "ticker": assessment.get("ticker"),
-                    "sector": assessment.get("sector"),
+                    "domain": domain,
+                    "sector": sector,
                     "thesis": assessment.get("thesis"),
                     "mentions": anomaly["recent_mentions"],
                     "confidence": assessment.get("confidence", "low"),
@@ -543,11 +626,12 @@ def _send_discovery_report(anomalies: list, real_signals: list):
         lines.append(f"Real signals: {len(real_signals)}\n")
 
         if real_signals:
-            lines.append("━━━ 🎯 New Supply Chain Nodes ━━━\n")
+            lines.append("━━━ 🎯 New Frontier Bottleneck Nodes ━━━\n")
             for s in real_signals:
                 emoji = {"high": "🟢", "medium": "🟡", "low": "🔴"}.get(s["confidence"], "⚪")
                 ticker_str = f" ({s['ticker']})" if s.get("ticker") else ""
                 lines.append(f"{emoji} <b>{s['company']}{ticker_str}</b>")
+                lines.append(f"   Domain: {s.get('domain') or s.get('sector') or '?'}")
                 lines.append(f"   Sector: {s.get('sector', '?')}")
                 lines.append(f"   Thesis: {s.get('thesis', '?')}")
                 lines.append(f"   Mentions: {s['mentions']}x this week (was 0)")
@@ -559,7 +643,7 @@ def _send_discovery_report(anomalies: list, real_signals: list):
 
             lines.append("⚡ Review and decide: /discover to see status")
         else:
-            lines.append("No new supply chain nodes detected this week. 📊")
+            lines.append("No new frontier bottleneck nodes detected this week. 📊")
             if anomalies:
                 lines.append("\nDismissed (noise):")
                 for a in anomalies[:5]:
@@ -598,6 +682,12 @@ def get_discovery_status() -> dict:
             ORDER BY cnt DESC LIMIT 10
         """, (week_ago,)).fetchall()
 
+        mention_contexts = conn.execute("""
+            SELECT context
+            FROM mention_tracker
+            WHERE scan_date >= ?
+        """, (week_ago,)).fetchall()
+
         total_scans = conn.execute(
             "SELECT COUNT(DISTINCT scan_date) FROM mention_tracker"
         ).fetchone()[0]
@@ -611,9 +701,24 @@ def get_discovery_status() -> dict:
             "SELECT COUNT(*) FROM discovery_anomalies WHERE is_real_signal = 1"
         ).fetchone()[0]
 
+    domain_counts = {}
+    for row in mention_contexts:
+        try:
+            context = json.loads(row["context"] or "{}")
+        except Exception:
+            context = {}
+        domain_id = context.get("domain_id")
+        if domain_id:
+            domain_counts[domain_id] = domain_counts.get(domain_id, 0) + 1
+    top_domains = [
+        {"domain": domain, "count": count}
+        for domain, count in sorted(domain_counts.items(), key=lambda item: item[1], reverse=True)[:10]
+    ]
+
     return {
         "flagged": [dict(r) for r in flagged],
         "top_mentions": [{"company": r["company_name"], "count": r["cnt"]} for r in top_mentions],
+        "top_domains": top_domains,
         "total_scans": total_scans,
         "total_companies": total_companies,
         "total_anomalies": total_anomalies,
@@ -636,8 +741,14 @@ def format_telegram_status() -> str:
         for f in status["flagged"]:
             ticker = f"({f['ticker_guess']})" if f.get("ticker_guess") else ""
             lines.append(f"  • <b>{f['company_name']}</b> {ticker}")
-            lines.append(f"    {f.get('sector_guess', '?')} — {(f.get('thesis') or '?')}")
+            domain = f.get("domain_guess") or f.get("sector_guess") or "?"
+            lines.append(f"    {domain} / {f.get('sector_guess', '?')} — {(f.get('thesis') or '?')}")
             lines.append(f"    Mentions: {f['mention_count']}x | Detected: {f['detected_date']}")
+
+    if status.get("top_domains"):
+        lines.append("\n━━━ 🧭 Top Domains (7d) ━━━")
+        for d in status["top_domains"][:5]:
+            lines.append(f"  {d['count']}x  {d['domain']}")
 
     if status["top_mentions"]:
         lines.append("\n━━━ 📊 Top Mentions (7d) ━━━")

@@ -21,6 +21,12 @@ def scoring() -> dict:
 def models() -> dict:
     return load_yaml("models.yaml")
 
+def chokepoints() -> dict:
+    return load_yaml("chokepoints.yaml")
+
+def frontier_domains() -> dict:
+    return load_yaml("frontier_domains.yaml")
+
 def telegram() -> dict:
     return load_yaml("telegram.yaml")
 

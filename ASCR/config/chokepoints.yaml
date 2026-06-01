@@ -1,0 +1,455 @@
+version: 1
+trading_policy: watch_only
+description: >
+  Public chokepoint research watchlist. This file is for discovery and thesis
+  tracking only. It must not directly trigger recommendations or trading.
+
+score_model:
+  max_component: 20
+  positive_components:
+  - scarcity
+  - dependency
+  - concentration
+  - validation
+  - timing
+  negative_components:
+  - crowding_risk
+  formula: scarcity + dependency + concentration + validation + timing - crowding_risk
+
+rotation_phases:
+  early:
+    rank: 1
+    description: Technical logic exists, but validation and market attention are limited.
+  front_run:
+    rank: 2
+    description: Early validation is visible before broad institutional consensus.
+  consensus:
+    rank: 3
+    description: Thesis is widely understood and upside depends on continued execution.
+  crowded:
+    rank: 4
+    description: Social attention, valuation, or price action may already reflect the thesis.
+  broken:
+    rank: 5
+    description: Demand, pricing, technical path, or customer validation has failed.
+
+themes:
+- id: photonics_inp_optical
+  name: Photonics and InP optical bottlenecks
+  phase: front_run
+  thesis: AI clusters need more optical links, and InP/optical component supply can bottleneck 800G and 1.6T deployments.
+  chokepoint_pattern: Small enabling suppliers can outperform obvious AI leaders when a technical bottleneck becomes revenue visible.
+  validation_events:
+  - Customer concentration becomes visible through orders, backlog, or revenue guide.
+  - Management confirms supply tightness, allocation, lead times, or pricing power.
+  - Hyperscaler or NVDA architecture updates increase optical intensity per rack.
+  death_signals:
+  - Optical inventory correction or order pushouts.
+  - New qualified suppliers remove scarcity.
+  - 1.6T or CPO transition timing slips materially.
+  candidates:
+  - ticker: AXTI
+    name: AXT
+    market: US
+    status: watch_only
+    source_tags: [public_chokepoint_research, inp_substrate, optical]
+    score:
+      scarcity: 19
+      dependency: 16
+      concentration: 16
+      validation: 14
+      timing: 12
+      crowding_risk: 12
+    validation_catalysts:
+    - InP substrate shortage commentary.
+    - Optical AI revenue conversion in customer reports.
+  - ticker: AAOI
+    name: Applied Optoelectronics
+    market: US
+    status: watch_only
+    source_tags: [public_chokepoint_research, optical_transceiver]
+    score:
+      scarcity: 14
+      dependency: 17
+      concentration: 11
+      validation: 16
+      timing: 9
+      crowding_risk: 14
+    validation_catalysts:
+    - 800G and 1.6T shipment ramp.
+    - Customer backlog or margin expansion.
+  - ticker: LITE
+    name: Lumentum
+    market: US
+    status: watch_only
+    source_tags: [public_chokepoint_research, optical]
+    score:
+      scarcity: 12
+      dependency: 16
+      concentration: 10
+      validation: 16
+      timing: 8
+      crowding_risk: 11
+    validation_catalysts:
+    - Datacom revenue acceleration.
+    - AI optical backlog strength.
+  - ticker: COHR
+    name: Coherent
+    market: US
+    status: watch_only
+    source_tags: [public_chokepoint_research, optical, materials]
+    score:
+      scarcity: 13
+      dependency: 16
+      concentration: 11
+      validation: 16
+      timing: 8
+      crowding_risk: 12
+    validation_catalysts:
+    - AI datacom order growth.
+    - Margin improvement from mix shift.
+  - ticker: IQE.L
+    name: IQE
+    market: UK
+    status: watch_only
+    source_tags: [public_chokepoint_research, epitaxy, compound_semiconductor]
+    score:
+      scarcity: 15
+      dependency: 13
+      concentration: 12
+      validation: 8
+      timing: 15
+      crowding_risk: 7
+    validation_catalysts:
+    - Photonics epitaxy demand recovery.
+    - AI optical customer design wins.
+
+- id: siph_cpo_els
+  name: Silicon photonics, CPO, and ELS next wave
+  phase: early
+  thesis: CPO, silicon photonics, and external laser source architectures may become the next optical scaling bottleneck after 800G and 1.6T.
+  chokepoint_pattern: Buy the next optical constraint before it becomes the consensus AI networking narrative.
+  validation_events:
+  - NVDA, hyperscaler, or switch OEM roadmap confirms CPO or ELS timing.
+  - Customer design wins convert to production revenue.
+  - Capex or supply agreements identify specific component constraints.
+  death_signals:
+  - CPO adoption slips beyond expected windows.
+  - Pluggable optics remain sufficient longer than expected.
+  - Design wins fail to convert to volume revenue.
+  candidates:
+  - ticker: POET
+    name: POET Technologies
+    market: US
+    status: watch_only
+    source_tags: [public_chokepoint_research, cpo, optical_engine]
+    score:
+      scarcity: 14
+      dependency: 14
+      concentration: 11
+      validation: 7
+      timing: 16
+      crowding_risk: 8
+    validation_catalysts:
+    - Production customer announcements.
+    - Revenue guide tied to AI optical engines.
+  - ticker: SIVE.ST
+    name: Sivers Semiconductors
+    market: Sweden
+    status: watch_only
+    source_tags: [public_chokepoint_research, external_laser_source, silicon_photonics]
+    score:
+      scarcity: 16
+      dependency: 15
+      concentration: 14
+      validation: 8
+      timing: 16
+      crowding_risk: 7
+    validation_catalysts:
+    - ELS design win details.
+    - AI datacenter photonics revenue guide.
+  - ticker: SOI.PA
+    name: Soitec
+    market: France
+    status: watch_only
+    source_tags: [public_chokepoint_research, substrate, silicon_photonics]
+    score:
+      scarcity: 14
+      dependency: 13
+      concentration: 14
+      validation: 9
+      timing: 15
+      crowding_risk: 6
+    validation_catalysts:
+    - Silicon photonics substrate demand.
+    - Recovery from smartphone cycle weakness.
+  - ticker: XFAB.PA
+    name: X-FAB Silicon Foundries
+    market: France
+    status: watch_only
+    source_tags: [public_chokepoint_research, specialty_foundry, silicon_photonics, sic]
+    score:
+      scarcity: 15
+      dependency: 13
+      concentration: 12
+      validation: 8
+      timing: 16
+      crowding_risk: 8
+    validation_catalysts:
+    - Silicon photonics or SiC AI data center program detail.
+    - Specialty foundry backlog expansion.
+
+- id: memory_hbm_storage
+  name: Memory and AI storage bottlenecks
+  phase: consensus
+  thesis: AI training and inference increase demand for HBM, DRAM, NAND, and enterprise SSD capacity.
+  chokepoint_pattern: Memory and storage can re-rate when pricing, utilization, and AI mix inflect together.
+  validation_events:
+  - HBM or eSSD pricing improves.
+  - AI memory allocation tightens.
+  - Guidance raises cite data center demand.
+  death_signals:
+  - Memory pricing rolls over.
+  - Inventory builds or utilization falls.
+  - New capacity arrives faster than demand.
+  candidates:
+  - ticker: SNDK
+    name: SanDisk
+    market: US
+    status: watch_only
+    source_tags: [public_chokepoint_research, nand, essd]
+    score:
+      scarcity: 13
+      dependency: 16
+      concentration: 9
+      validation: 16
+      timing: 5
+      crowding_risk: 12
+    validation_catalysts:
+    - Enterprise SSD demand and pricing.
+    - AI storage revenue commentary.
+  - ticker: MU
+    name: Micron
+    market: US
+    status: watch_only
+    source_tags: [public_chokepoint_research, hbm, dram]
+    score:
+      scarcity: 11
+      dependency: 18
+      concentration: 9
+      validation: 18
+      timing: 4
+      crowding_risk: 10
+    validation_catalysts:
+    - HBM allocation and pricing.
+    - Data center memory mix expansion.
+  - ticker: WDC
+    name: Western Digital
+    market: US
+    status: watch_only
+    source_tags: [nand, storage]
+    score:
+      scarcity: 10
+      dependency: 13
+      concentration: 8
+      validation: 13
+      timing: 7
+      crowding_risk: 7
+    validation_catalysts:
+    - NAND pricing strength.
+    - Enterprise storage cycle recovery.
+
+- id: neocloud_capex
+  name: Neocloud and AI infrastructure capacity
+  phase: consensus
+  thesis: Hyperscaler AI capex can spill into neoclouds, power-backed data center operators, and compute capacity aggregators.
+  chokepoint_pattern: Follow where AI compute contracts, power access, and financing capacity meet before the market fully prices utilization.
+  validation_events:
+  - Signed hyperscaler contracts or leases.
+  - Financing closes without destructive dilution.
+  - Power interconnect and GPU delivery milestones are met.
+  death_signals:
+  - Financing fails or dilution overwhelms upside.
+  - Customer contracts slip.
+  - GPU supply or power access misses deadlines.
+  candidates:
+  - ticker: IREN
+    name: IREN
+    market: US
+    status: watch_only
+    source_tags: [public_chokepoint_research, neocloud, compute]
+    score:
+      scarcity: 12
+      dependency: 16
+      concentration: 9
+      validation: 14
+      timing: 8
+      crowding_risk: 12
+    validation_catalysts:
+    - AI cloud contract conversion.
+    - Power-backed data center expansion.
+  - ticker: CRWV
+    name: CoreWeave
+    market: US
+    status: watch_only
+    source_tags: [public_chokepoint_research, neocloud, hyperscaler_contracts]
+    score:
+      scarcity: 10
+      dependency: 18
+      concentration: 12
+      validation: 16
+      timing: 5
+      crowding_risk: 15
+    validation_catalysts:
+    - Contract backlog growth.
+    - Margin durability under capex load.
+  - ticker: NBIS
+    name: Nebius
+    market: US
+    status: watch_only
+    source_tags: [public_chokepoint_research, neocloud]
+    score:
+      scarcity: 11
+      dependency: 17
+      concentration: 11
+      validation: 14
+      timing: 6
+      crowding_risk: 13
+    validation_catalysts:
+    - AI cloud revenue acceleration.
+    - Customer and capacity disclosures.
+  - ticker: WULF
+    name: TeraWulf
+    market: US
+    status: watch_only
+    source_tags: [public_chokepoint_research, power, data_center]
+    score:
+      scarcity: 13
+      dependency: 14
+      concentration: 9
+      validation: 9
+      timing: 11
+      crowding_risk: 11
+    validation_catalysts:
+    - AI hosting contracts.
+    - Power monetization details.
+  - ticker: CIFR
+    name: Cipher Mining
+    market: US
+    status: watch_only
+    source_tags: [public_chokepoint_research, power, data_center]
+    score:
+      scarcity: 12
+      dependency: 13
+      concentration: 8
+      validation: 8
+      timing: 11
+      crowding_risk: 10
+    validation_catalysts:
+    - Data center conversion economics.
+    - Non-crypto customer contracts.
+
+- id: power_semi_800v
+  name: Power semiconductors and 800V data center architecture
+  phase: early
+  thesis: Higher rack power density and 800V distribution can shift value toward SiC, GaN, power conversion, and specialized analog suppliers.
+  chokepoint_pattern: The highest return ideas may sit in small enabling power semiconductor names before architecture shifts become capex line items.
+  validation_events:
+  - NVDA or hyperscaler confirms 800V rack architecture timing.
+  - Supplier wins AI data center power design slots.
+  - Power conversion backlog or pricing improves.
+  death_signals:
+  - 800V transition slips or remains niche.
+  - Incumbents absorb value without small supplier share gains.
+  - Balance sheet stress forces dilution before revenue arrives.
+  candidates:
+  - ticker: NVTS
+    name: Navitas Semiconductor
+    market: US
+    status: watch_only
+    source_tags: [public_chokepoint_research, gan, power_semi]
+    score:
+      scarcity: 16
+      dependency: 15
+      concentration: 11
+      validation: 8
+      timing: 16
+      crowding_risk: 12
+    validation_catalysts:
+    - AI data center GaN design wins.
+    - 800V architecture supplier disclosures.
+  - ticker: WOLF
+    name: Wolfspeed
+    market: US
+    status: watch_only
+    source_tags: [public_chokepoint_research, sic, power_semi]
+    score:
+      scarcity: 15
+      dependency: 14
+      concentration: 12
+      validation: 6
+      timing: 14
+      crowding_risk: 11
+    validation_catalysts:
+    - SiC demand outside EV improves.
+    - Balance sheet risk declines.
+  - ticker: VICR
+    name: Vicor
+    market: US
+    status: watch_only
+    source_tags: [public_chokepoint_research, power_conversion]
+    score:
+      scarcity: 14
+      dependency: 16
+      concentration: 13
+      validation: 10
+      timing: 13
+      crowding_risk: 8
+    validation_catalysts:
+    - AI rack power conversion orders.
+    - Design win conversion to revenue.
+  - ticker: POWI
+    name: Power Integrations
+    market: US
+    status: watch_only
+    source_tags: [power_conversion]
+    score:
+      scarcity: 11
+      dependency: 13
+      concentration: 10
+      validation: 11
+      timing: 12
+      crowding_risk: 7
+    validation_catalysts:
+    - Data center power revenue mix.
+    - GaN or high-voltage product traction.
+  - ticker: AOSL
+    name: Alpha and Omega Semiconductor
+    market: US
+    status: watch_only
+    source_tags: [public_chokepoint_research, power_semi]
+    score:
+      scarcity: 10
+      dependency: 12
+      concentration: 8
+      validation: 9
+      timing: 13
+      crowding_risk: 8
+    validation_catalysts:
+    - AI server power design wins.
+    - Margin recovery tied to data center mix.
+  - ticker: "ON"
+    name: ON Semiconductor
+    market: US
+    status: watch_only
+    source_tags: [power_semi, sic]
+    score:
+      scarcity: 8
+      dependency: 12
+      concentration: 8
+      validation: 13
+      timing: 8
+      crowding_risk: 5
+    validation_catalysts:
+    - SiC demand inflection.
+    - AI power management exposure becomes visible.

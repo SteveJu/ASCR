@@ -1,0 +1,181 @@
+version: 1
+policy: discovery_only
+description: >
+  Domain-general early discovery map for frontier technology sectors. These
+  domains extend anomaly discovery beyond AI infrastructure. They are used for
+  scanning, classification, and thesis tracking only.
+
+global_principles:
+- Track enabling bottlenecks before they become obvious public themes.
+- Prefer hard validation: purchase orders, signed contracts, backlog, shipments, certifications, pricing power, or production ramps.
+- Treat demos, concept videos, generic fundraising, and broad market-size articles as low-quality signals unless tied to a specific supplier or customer.
+- Require at least one non-social evidence source before promotion into the trading universe.
+
+domains:
+- id: ai_infrastructure
+  name: AI infrastructure and data center supply chain
+  thesis: AI capex creates bottlenecks in compute, memory, optical, power, cooling, networking, and data center capacity.
+  discovery_goal: Find second-order suppliers, physical bottlenecks, and new capacity constraints before they enter consensus coverage.
+  bottlenecks:
+  - HBM and high-bandwidth memory
+  - Optical transceivers, InP substrates, CPO, and external laser sources
+  - Power conversion, grid interconnect, cooling, and data center construction
+  - Advanced packaging, substrates, and semiconductor equipment
+  early_signal_queries:
+  - AI data center bottleneck supplier contract
+  - NVIDIA supplier capacity reservation agreement
+  - hyperscaler data center power bottleneck supplier
+  - AI optical transceiver shortage 1.6T supplier
+  - HBM enterprise SSD shortage AI supplier
+  - AI data center cooling power conversion order
+  validation_signals:
+  - Signed supply agreement, capacity reservation, or prepayment
+  - Backlog, lead time, utilization, pricing, or margin commentary
+  - Customer capex plan names a specific component constraint
+  death_signals:
+  - Inventory correction, order pushout, or customer diversification
+  - Capacity arrives faster than demand
+  - Technical transition slips materially
+  noise_patterns:
+  - Best AI stocks lists
+  - Generic AI demand commentary
+  - Mega-cap-only capex articles without supplier detail
+
+- id: humanoid_robotics
+  name: Humanoid robotics
+  thesis: Humanoid robots become investable when enabling subsystems move from demos to repeatable production, fleet deployment, and supplier orders.
+  discovery_goal: Detect the suppliers and component bottlenecks behind humanoid robot production ramps.
+  bottlenecks:
+  - Actuators, joint modules, harmonic reducers, cycloidal reducers, and motors
+  - Force-torque sensors, tactile sensors, cameras, IMUs, and hands
+  - Batteries, thermal management, edge AI chips, and safety systems
+  - Contract manufacturing, precision machining, and reliability testing
+  early_signal_queries:
+  - humanoid robot actuator supplier production order
+  - humanoid robot harmonic reducer supplier contract
+  - humanoid robot tactile sensor force torque supplier
+  - humanoid robot joint module mass production supplier
+  - humanoid robot contract manufacturer production ramp
+  - robotics company humanoid fleet deployment supplier
+  validation_signals:
+  - Production order tied to named robot OEM
+  - Unit-volume target moves from pilot to fleet deployment
+  - Supplier reports robotics revenue, backlog, or capacity expansion
+  - Safety certification, factory deployment, or service contract
+  death_signals:
+  - Robot OEM delays production ramp
+  - Component reliability or cost prevents scale
+  - Demos fail to convert into paid deployments
+  noise_patterns:
+  - Viral demo videos without production or customer detail
+  - Generic "robots will change everything" articles
+  - Research prototypes without commercialization path
+
+- id: robotics_automation
+  name: Robotics and physical automation
+  thesis: Commercial robots create investable signals when labor scarcity, customer ROI, and repeat deployments converge.
+  discovery_goal: Find automation suppliers whose revenue inflects before robotics becomes a broad market consensus.
+  bottlenecks:
+  - Machine vision, lidar, controllers, servo drives, grippers, and safety systems
+  - Warehouse automation, AMRs, industrial arms, and surgical or field robotics
+  - Integration software, maintenance networks, and fleet telemetry
+  early_signal_queries:
+  - warehouse robotics supplier contract fleet deployment
+  - autonomous mobile robot customer rollout supplier
+  - industrial robot vision system order AI automation
+  - robot gripper servo drive supplier revenue growth
+  - robotics automation backlog manufacturing labor shortage
+  validation_signals:
+  - Repeat customer rollout after pilot
+  - Gross margin improves with standardized deployment
+  - Fleet utilization, maintenance revenue, or attach-rate disclosed
+  death_signals:
+  - Pilot programs fail to convert
+  - Integration cost overwhelms ROI
+  - Customer capex cuts automation budget
+  noise_patterns:
+  - General automation trend pieces
+  - One-off pilot announcements without deployment economics
+
+- id: commercial_space
+  name: Commercial space
+  thesis: Space companies become investable when launch cadence, satellite manufacturing, defense demand, and ground infrastructure convert into recurring revenue.
+  discovery_goal: Detect launch, satellite, propulsion, components, and ground-station bottlenecks before they show up in headline revenue.
+  bottlenecks:
+  - Launch cadence, engines, propulsion, valves, composites, and avionics
+  - Satellite buses, solar arrays, RF payloads, optical communications, and space chips
+  - Ground stations, space situational awareness, and defense procurement
+  early_signal_queries:
+  - commercial space propulsion supplier contract
+  - satellite bus manufacturing backlog supplier
+  - space optical communications supplier order
+  - defense space contract small satellite supplier
+  - launch cadence bottleneck avionics propulsion supplier
+  - ground station network contract space company
+  validation_signals:
+  - Contract backlog converts to launch, delivery, or milestone payment
+  - Launch cadence improves without major failures
+  - Defense or government award names a supplier or subsystem
+  - Recurring data, communications, or service revenue grows
+  death_signals:
+  - Launch failure grounds cadence
+  - Contract milestone slips or customer cancels
+  - Dilution funds losses without revenue acceleration
+  noise_patterns:
+  - Space tourism publicity
+  - Non-binding MOUs without funded contract value
+  - Concept mission announcements without schedule or customer
+
+- id: quantum_computing
+  name: Quantum computing
+  thesis: Quantum becomes investable through subsystem bottlenecks and measurable error-correction progress, not broad claims about future computing power.
+  discovery_goal: Find hardware, cryogenic, photonic, control-electronics, and quantum-networking suppliers that get validated before scaled quantum revenue is obvious.
+  bottlenecks:
+  - Cryogenics, dilution refrigerators, lasers, photonics, microwave control, and RF electronics
+  - Error correction, qubit fidelity, interconnects, and quantum networking
+  - Government, defense, pharma, and cloud access contracts with measurable milestones
+  early_signal_queries:
+  - quantum computing cryogenic supplier contract
+  - quantum error correction milestone customer contract
+  - quantum photonics chip supplier production order
+  - quantum networking defense contract supplier
+  - dilution refrigerator quantum computing backlog
+  - quantum control electronics supplier revenue
+  validation_signals:
+  - Error rates, logical qubits, or fidelity milestones improve with third-party validation
+  - Funded government or enterprise contract names deliverables
+  - Subsystem supplier reports backlog, capacity, or revenue inflection
+  - Cloud quantum usage or paid access increases
+  death_signals:
+  - Milestones slip without technical explanation
+  - Revenue remains mostly grants or one-time research sales
+  - Competing architecture invalidates supplier exposure
+  noise_patterns:
+  - Quantum supremacy headlines without commercial milestone
+  - Broad TAM articles without named customer or subsystem
+  - Academic paper coverage without production path
+
+- id: frontier_energy
+  name: Frontier energy and grid infrastructure
+  thesis: New compute, robotics, manufacturing, and electrification workloads create opportunities in grid capacity, nuclear, storage, thermal, and power electronics.
+  discovery_goal: Detect non-obvious bottlenecks where demand growth forces infrastructure upgrades or long-term offtake contracts.
+  bottlenecks:
+  - Grid interconnect, transformers, switchgear, substations, nuclear restarts, storage, and thermal systems
+  - High-voltage power electronics, SiC/GaN, UPS, and microgrids
+  early_signal_queries:
+  - data center grid interconnect bottleneck supplier
+  - transformer switchgear backlog AI data center
+  - nuclear power purchase agreement data center supplier
+  - microgrid contract AI factory data center
+  - silicon carbide gallium nitride data center power order
+  validation_signals:
+  - Long-term PPA, interconnect approval, or funded grid upgrade
+  - Backlog and pricing power in critical electrical equipment
+  - Utility or hyperscaler names capacity constraint and supplier
+  death_signals:
+  - Policy reversal or permitting failure
+  - Customer cancels data center or industrial load
+  - Capacity additions remove scarcity
+  noise_patterns:
+  - Generic energy demand charts
+  - Political commentary without project-level evidence

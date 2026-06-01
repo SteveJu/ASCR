@@ -1,8 +1,8 @@
-# ASCR v1.8
+# ASCR v1.9
 
-AI Supply Chain Stock Opportunity Discovery & Position Exit System.
+AI Supply Chain and Frontier Technology Opportunity Discovery System.
 
-Event-driven signal detection for AI supply chain stocks. Scans news, SEC filings, insider trades, and social sentiment in real-time. Generates high-risk research priorities and buy/sell signal candidates via LLM-assisted analysis. Pure signal intelligence — no auto-trading.
+Event-driven signal detection for AI supply chain and adjacent frontier technology stocks. Scans news, SEC filings, insider trades, and social sentiment in real-time. Generates high-risk research priorities and buy/sell signal candidates via LLM-assisted analysis. Pure signal intelligence — no auto-trading.
 
 ## Architecture
 
@@ -35,7 +35,7 @@ Continuous monitoring during market hours (9:00 AM - 4:30 PM ET):
 |----------|---------|
 | **Core** | `recommender` (ranking engine), `scoring`, `scoring_calibration`, `scoring_ablation`, `scoring_feedback`, `rating`, `config` |
 | **Data** | `event_pipeline`, `price_fetcher`, `sec_fetcher`, `insider_tracker`, `news_fetcher` |
-| **Analysis** | `analysis_engine`, `event_daemon`, `fast_scan`, `discovery_engine`, `sector_discovery` |
+| **Analysis** | `analysis_engine`, `event_daemon`, `fast_scan`, `discovery_engine`, `sector_discovery`, `frontier_radar`, `frontier_domains`, `chokepoint`, `thesis_receipts` |
 | **LLM** | `gemini_client` (Gemini 3.1 Flash Lite default → Flash fallback), `llm_usage` (usage/cost logging), `event_classifier`, `model_router` |
 | **Risk** | `bubble_detector` (3-level circuit breaker), `market_regime`, `exit_rules`, `universe_pruner` |
 | **Intelligence** | `supply_chain` (graph propagation), `leveraged_etf_monitor`, `experience_tracker` |
@@ -44,7 +44,8 @@ Continuous monitoring during market hours (9:00 AM - 4:30 PM ET):
 
 ## Scoring Engine
 
-ASCR v1.8 keeps the validated scoring stack and adds quant-style news routing before deep LLM analysis:
+ASCR v1.9 keeps the validated scoring stack, the quant-style news router,
+and adds a watch-only frontier radar for earlier domain discovery:
 
 - base dimensions: evidence, asymmetry, momentum, risk
 - event alpha: time-decayed, source-weighted public events with confidence, verdict, conviction, and priced-in adjustment
@@ -58,6 +59,9 @@ ASCR v1.8 keeps the validated scoring stack and adds quant-style news routing be
 - event analysis defaults to Gemini 3.1 Flash Lite via `ASCR_EVENT_MODEL`
 - weekly health checks distinguish latest single-ticker updates from full-universe coverage and flag launchd nonzero last exits
 - quant headline scoring prioritizes materiality, surprise, magnitude, affected actor, and second-order supply-chain implications
+- frontier domain discovery tracks AI infrastructure, humanoid robotics, robotics automation, commercial space, quantum computing, and frontier energy
+- chokepoint scoring ranks watch-only bottleneck candidates by scarcity, dependency, concentration, validation, timing, and crowding risk
+- thesis receipts preserve original discovery logic and later price outcomes for accountability
 
 Current production weights:
 
@@ -89,7 +93,7 @@ spread; config changes remain manual after review.
 
 ## News Routing
 
-ASCR v1.8 routes headlines through a deterministic `quant_score` before Gemini or
+ASCR routes headlines through a deterministic `quant_score` before Gemini or
 Sonnet analysis. The router keeps concrete, material events such as contracts,
 guidance changes, SEC filings, customer wins/losses, funding or dilution, supply
 disruptions, major counterparty events, and explicit magnitude.
@@ -104,6 +108,31 @@ Default controls:
 ASCR_PREFILTER_MIN_SCORE=50
 ASCR_PREFILTER_MAX_PER_BATCH=12
 ASCR_RELEVANT_MAX_PER_RUN=45
+```
+
+## Frontier Radar
+
+`src/frontier_radar.py` gives ASCR a separate discovery surface for domains that
+may emerge before they belong in the trading universe:
+
+- AI infrastructure bottlenecks
+- humanoid robotics
+- robotics automation
+- commercial space
+- quantum computing
+- frontier energy and grid infrastructure
+
+The radar is discovery-only. It does not bypass the recommender, does not add
+tickers automatically, and does not send paper-trading orders to ASCR-H.
+
+Useful local commands:
+
+```bash
+python3 -m src.frontier_domains --queries
+python3 -m src.chokepoint --report --limit 20
+python3 -m src.thesis_receipts --sync
+python3 -m src.frontier_radar
+python3 -m src.main frontier --json
 ```
 
 ## Backtest Snapshot
@@ -171,7 +200,7 @@ Telegram notification support is optional. The first public ASCR source drop doe
 
 ## Data
 
-- **DB**: `data/ascr.sqlite` (events, prices, scores, tickers, and `llm_calls` usage/cost log)
+- **DB**: `data/ascr.sqlite` (events, prices, scores, tickers, `thesis_receipts`, and `llm_calls` usage/cost log)
 - **Experience**: `data/experience.sqlite` (signal accuracy tracking)
 - **Leveraged ETF**: `data/leveraged_etf_state.json`
 

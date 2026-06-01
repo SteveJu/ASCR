@@ -45,7 +45,7 @@ ASCR treats news as a data stream, not reading material. The first question is:
 
 > Is this incremental, material information that could change expectations for a tracked company or its direct supply chain?
 
-The v1.8 router assigns a `quant_score` before any deep LLM call. It favors:
+The headline router assigns a `quant_score` before any deep LLM call. It favors:
 
 - named customer wins or losses
 - material contracts, supply agreements, prepayments, and capacity reservations

@@ -51,7 +51,7 @@ fetch public data
 
 ## News-Routing Controls
 
-The v1.8 headline router can be tuned from the environment:
+The headline router can be tuned from the environment:
 
 ```bash
 ASCR_PREFILTER_MIN_SCORE=50

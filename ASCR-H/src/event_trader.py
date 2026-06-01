@@ -18,7 +18,7 @@ logger = get_logger("event_trader")
 PT_DB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                      "data", "ascr_h.sqlite")
 
-# Stock-radar modules (for activity logging)
+# ASCR modules (for activity logging)
 sys.path.insert(0, os.environ.get("ASCR_PROJECT_DIR", "../ASCR"))
 try:
     from src.activity_log import log as alog

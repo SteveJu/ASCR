@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.9.0 - Frontier Radar And Thesis Receipts
+
+- Added a watch-only frontier radar for AI infrastructure, humanoid robotics, robotics automation, commercial space, quantum computing, and frontier energy
+- Added domain-tagged frontier discovery queries and prompt context for anomaly classification
+- Added public chokepoint research config with scarcity, dependency, concentration, validation, timing, and crowding-risk scoring
+- Added thesis receipt tracking to preserve original discovery logic, validation catalysts, death signals, and later local price outcomes
+- Extended `sector_discovery` to store domain context and report recent domain heat
+- Added an ASCR CLI `frontier` report command
+- Updated public docs and version labels for the frontier discovery release
+
+Safety work:
+
+- Kept the frontier radar discovery-only and watch-only; it does not directly trigger recommendations or ASCR-H paper orders
+- Removed private/source-specific attribution labels from the public chokepoint config
+- Added config/docs language that keeps runtime state, local paths, account state, and secrets out of the public repo
+
+Validation:
+
+- ASCR tests: 68 passed
+- ASCR-H tests: 25 passed
+- Frontier CLI smoke test passed with temporary SQLite state
+- Python source compile checks passed
+- Public safety scans found no real token, private path, private attribution label, or old private project name in tracked source/docs
+
 ## v1.8.0 - Quant-Style News Routing
 
 - Added a deterministic headline `quant_score` before deep LLM analysis

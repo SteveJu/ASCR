@@ -25,6 +25,22 @@ market hours  ASCR event daemon watches new events
 Friday PM  weekly performance report
 ```
 
+## Frontier Radar Mode
+
+Run the watch-only frontier discovery surface manually:
+
+```bash
+cd ASCR
+python3 -m src.frontier_domains --queries
+python3 -m src.chokepoint --report --limit 20
+python3 -m src.thesis_receipts --sync
+python3 -m src.frontier_radar
+```
+
+`python3 -m src.main frontier` renders the same radar through the ASCR CLI. This
+mode is for early hypothesis tracking only; it does not place recommendations
+into ASCR-H.
+
 ## Local State
 
 Runtime state lives under ignored directories:

@@ -1,15 +1,15 @@
 # ASCR: AI Supply Chain Radar
 
-**Version:** v1.8.0 quant-style news routing
+**Version:** v1.9.0 frontier radar and thesis receipts
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](#quick-start)
 [![Status](https://img.shields.io/badge/status-research%20framework-orange)](#current-status)
 [![Paper Trading](https://img.shields.io/badge/trading-paper%20only-lightgrey)](#what-it-does-not-do)
 [![Local First](https://img.shields.io/badge/storage-local%20SQLite-green)](#privacy-model)
 
-ASCR is an open-source, local-first research system for studying the AI infrastructure supply chain with event-driven signals, high-risk opportunity discovery, and paper trading.
+ASCR is an open-source, local-first research system for studying the AI infrastructure supply chain and adjacent frontier technologies with event-driven signals, high-risk opportunity discovery, and paper trading.
 
-**Keywords:** AI supply chain, event-driven investing, market intelligence, stock analysis, paper trading, quantitative finance, LLM investing research, SEC filings, backtesting, Telegram bot, SQLite.
+**Keywords:** AI supply chain, frontier technology, humanoid robotics, commercial space, quantum computing, event-driven investing, market intelligence, stock analysis, paper trading, quantitative finance, LLM investing research, SEC filings, backtesting, Telegram bot, SQLite.
 
 It is designed as two separate systems:
 
@@ -49,6 +49,7 @@ The AI buildout is not only about one GPU company. It is a supply chain:
 - data centers
 - energy and grid infrastructure
 - chip design and EDA tools
+- adjacent frontier domains such as humanoid robotics, robotics automation, commercial space, quantum computing, and grid infrastructure
 
 ASCR asks:
 
@@ -62,6 +63,8 @@ ASCR, the brain:
 
 - fetches public market information
 - watches news, SEC filings, price events, and supply-chain signals
+- maps frontier technology domains and watch-only chokepoint themes
+- tracks thesis receipts so early ideas can be reviewed against later evidence
 - routes headlines through a quant-style materiality score before LLM analysis
 - extracts structured events with LLM assistance
 - logs AI API usage and estimated cost
@@ -112,11 +115,14 @@ Public data
   ├─ SEC filings
   ├─ Yahoo Finance
   ├─ price events
+  ├─ frontier domain queries
+  ├─ chokepoint watchlists
   └─ optional sentiment / discovery sources
 
 ASCR
   ├─ event pipeline
   ├─ SQLite event store
+  ├─ frontier radar and thesis receipts
   ├─ scoring, calibration, ablation, and ranking
   ├─ recommendation engine
   └─ AI usage and cost logs
@@ -162,7 +168,7 @@ See [docs/08-backtesting.md](docs/08-backtesting.md).
 
 ## News Routing Update
 
-ASCR v1.8.0 adds a deterministic `quant_score` front-end for news. The router is
+ASCR includes a deterministic `quant_score` front-end for news. The router is
 stricter than topical relevance: it favors material contracts, guidance changes,
 SEC filings, customer wins/losses, funding or dilution, supply disruption,
 major counterparty signals, and explicit magnitude.
@@ -177,6 +183,34 @@ Default knobs:
 ASCR_PREFILTER_MIN_SCORE=50
 ASCR_PREFILTER_MAX_PER_BATCH=12
 ASCR_RELEVANT_MAX_PER_RUN=45
+```
+
+## Frontier Radar Update
+
+ASCR v1.9.0 adds a standalone frontier radar for early discovery in domains that
+may become investable before they are obvious in the core AI supply-chain
+universe:
+
+- AI infrastructure and data center bottlenecks
+- humanoid robotics
+- robotics and physical automation
+- commercial space
+- quantum computing
+- frontier energy and grid infrastructure
+
+This layer is deliberately watch-only. It can scan domain-tagged queries, score
+chokepoint candidates, and preserve thesis receipts, but it does not directly
+create buy/sell recommendations or paper-trading orders.
+
+Useful commands:
+
+```bash
+cd ASCR
+python3 -m src.frontier_domains --queries
+python3 -m src.chokepoint --report --limit 20
+python3 -m src.thesis_receipts --sync
+python3 -m src.frontier_radar
+python3 -m src.main frontier
 ```
 
 ## Fundamental Sanity Checks
@@ -253,6 +287,10 @@ python3 tests/test_scoring.py
 python3 tests/test_scoring_calibration.py
 python3 tests/test_scoring_ablation.py
 python3 tests/test_scoring_feedback.py
+python3 tests/test_chokepoint.py
+python3 tests/test_frontier_domains.py
+python3 tests/test_frontier_radar.py
+python3 tests/test_thesis_receipts.py
 ```
 
 Run ASCR-H tests:
@@ -379,11 +417,13 @@ See [docs/00-public-release-checklist.md](docs/00-public-release-checklist.md).
 
 ## Current Status
 
-Current public release: v1.8.0
+Current public release: v1.9.0
 
 - sanitized ASCR source tree
 - sanitized ASCR-H source tree
 - sanitized backtest source tree
+- frontier radar for humanoid robotics, robotics automation, commercial space, quantum computing, frontier energy, and AI infrastructure bottlenecks
+- watch-only chokepoint scoring and thesis receipt tracking
 - quant-style event news router with materiality scoring and LLM budget caps
 - validated scoring engine with calibration and ablation tools
 - calibration stability guard and event-alpha source/type calibration reports

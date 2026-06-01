@@ -113,6 +113,71 @@ def ensure_events_table(conn):
     conn.execute("CREATE INDEX IF NOT EXISTS idx_events_ticker_date ON events(ticker, date)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_events_date_ticker ON events(date, ticker)")
 
+
+def ensure_thesis_receipts_table(conn):
+    """Ensure thesis receipt table for domain-general thesis tracking."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS thesis_receipts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            receipt_key TEXT UNIQUE NOT NULL,
+            source TEXT NOT NULL,
+            domain_id TEXT,
+            theme_id TEXT,
+            ticker TEXT,
+            company_name TEXT,
+            thesis TEXT,
+            status TEXT DEFAULT 'open',
+            discovered_at TEXT,
+            first_price REAL,
+            first_price_date TEXT,
+            current_price REAL,
+            current_price_date TEXT,
+            max_gain_pct REAL,
+            current_gain_pct REAL,
+            max_drawdown_pct REAL,
+            validation_events_json TEXT,
+            validation_catalysts_json TEXT,
+            death_signals_json TEXT,
+            notes TEXT,
+            last_reviewed_at TEXT,
+            created_at REAL,
+            updated_at REAL
+        )
+    """)
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(thesis_receipts)").fetchall()}
+    columns = {
+        "receipt_key": "TEXT UNIQUE NOT NULL",
+        "source": "TEXT NOT NULL",
+        "domain_id": "TEXT",
+        "theme_id": "TEXT",
+        "ticker": "TEXT",
+        "company_name": "TEXT",
+        "thesis": "TEXT",
+        "status": "TEXT DEFAULT 'open'",
+        "discovered_at": "TEXT",
+        "first_price": "REAL",
+        "first_price_date": "TEXT",
+        "current_price": "REAL",
+        "current_price_date": "TEXT",
+        "max_gain_pct": "REAL",
+        "current_gain_pct": "REAL",
+        "max_drawdown_pct": "REAL",
+        "validation_events_json": "TEXT",
+        "validation_catalysts_json": "TEXT",
+        "death_signals_json": "TEXT",
+        "notes": "TEXT",
+        "last_reviewed_at": "TEXT",
+        "created_at": "REAL",
+        "updated_at": "REAL",
+    }
+    for name, definition in columns.items():
+        if name not in existing:
+            conn.execute(f"ALTER TABLE thesis_receipts ADD COLUMN {name} {definition}")
+
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_thesis_receipts_status ON thesis_receipts(status)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_thesis_receipts_ticker ON thesis_receipts(ticker)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_thesis_receipts_domain ON thesis_receipts(domain_id)")
+
 def init_db():
     with get_conn() as conn:
         c = conn.cursor()
@@ -142,6 +207,7 @@ def init_db():
         """)
 
         ensure_events_table(conn)
+        ensure_thesis_receipts_table(conn)
 
         c.execute("""
             CREATE TABLE IF NOT EXISTS scores (

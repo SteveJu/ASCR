@@ -80,7 +80,7 @@ SOURCE_PROFILES = {
     },
 }
 
-# Mirrors live stock-radar sector_strategy.py stop levels.
+# Mirrors live ASCR sector_strategy.py stop levels.
 SECTOR_STOPS = {
     "memory_storage": (-20.0, -25.0),
     "optical": (-20.0, -25.0),

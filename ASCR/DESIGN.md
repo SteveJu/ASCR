@@ -1,4 +1,4 @@
-# ASCR v1.8 — Public Design Document
+# ASCR v1.9 — Public Design Document
 
 ## 1. Philosophy
 
@@ -49,7 +49,8 @@ Fetch (Python, free)
 
 ### Scoring
 
-ASCR v1.8 uses a five-layer scoring stack:
+ASCR v1.9 uses the validated scoring stack and adds a separate
+watch-only frontier radar:
 
 1. Base factor context: evidence, asymmetry, momentum, risk.
 2. Event alpha: fresh structured events adjust evidence/asymmetry/risk using source quality, event type, confidence, verdict, conviction, novelty, decay, and priced-in discount.
@@ -57,16 +58,20 @@ ASCR v1.8 uses a five-layer scoring stack:
 4. Business-quality overlay: margins, cash generation, ROE, leverage, and growth quality distinguish durable businesses from weak event beneficiaries.
 5. Feedback alpha: optional ASCR-H outcome feedback adds small bounded adjustments with sample-size shrinkage.
 
-v1.8 keeps the calibration stability guard: if the top grid candidates have
+The calibration stability guard remains active: if the top grid candidates have
 effectively tied objective scores but materially different weights, the selected
 profile falls back to the current baseline. Event-alpha source and event-type
 weights are evaluated through the same IC/spread calibration path. Event analysis
 defaults to `gemini-3.1-flash-lite`, overridable with `ASCR_EVENT_MODEL`.
 
-v1.8 also keeps operational reporting: weekly health checks report latest
+Operational reporting remains active: weekly health checks report latest
 versus full-universe coverage for prices and scores, flag stale full coverage,
 and treat launchd nonzero last exits as failures instead of silently reporting
 loaded jobs as healthy.
+
+v1.9 adds domain-general discovery for frontier technologies. The new frontier
+radar maps domain queries, tracks chokepoint candidates, and records thesis
+receipts, but it does not directly generate buy/sell recommendations.
 
 Current public production weights:
 
@@ -152,8 +157,24 @@ The feedback layer is bounded and validated strict as-of: each historical scorin
 
 ### Sector Discovery (`src/sector_discovery.py`)
 - Anomaly detection: track mention frequency changes (0→many mentions)
-- LLM classifies: "Is this company genuinely connected to AI supply chain?"
+- LLM classifies: "Is this company genuinely connected to an investable frontier bottleneck?"
+- Domain-tagged queries cover AI infrastructure, humanoid robotics, robotics automation, commercial space, quantum computing, and frontier energy
 - No keyword-based approach — catches "0 to 1" moments
+
+### Frontier Radar (`src/frontier_radar.py`)
+- Standalone status report for configured frontier domains
+- Pulls discovery anomalies, domain heat, and thesis receipts into one report
+- Watch-only: no automatic universe promotion, recommendations, or ASCR-H orders
+
+### Chokepoint Watchlist (`src/chokepoint.py`)
+- Scores candidate bottleneck ideas by scarcity, dependency, concentration, validation, timing, and crowding risk
+- Tracks rotation phase: early, front_run, consensus, crowded, or broken
+- Preserves validation catalysts and death signals for later review
+
+### Thesis Receipts (`src/thesis_receipts.py`)
+- Stores original thesis, source, domain, validation path, and death signals
+- Can refresh local price outcomes from the ASCR price table
+- Exists for accountability, not for automated trading
 
 ### Universe Pruner (`src/universe_pruner.py`)
 - 5 trigger types: D-tier, no events 60d, negative sentiment, sector heat death, delisted
@@ -184,6 +205,7 @@ For Gemini, thinking tokens are counted as billable output tokens.
 - `prices` — Daily OHLCV from yfinance
 - `scores` — Daily composite scores per ticker
 - `tickers` — Universe registry synced from universe.yaml
+- `thesis_receipts` — Watch-only early thesis records and later price outcomes
 - `mentions` — Social media mention tracking
 - `activity_log` — Structured operation log
 - `llm_calls` — AI API usage/cost log by model and purpose

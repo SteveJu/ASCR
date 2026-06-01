@@ -230,6 +230,15 @@ def cmd_ranking(args):
     print(report)
 
 
+def cmd_frontier(args):
+    from src.frontier_radar import build_payload, render_report
+    payload = build_payload(limit=args.limit)
+    if getattr(args, "json", False):
+        print(json.dumps(payload, indent=2, sort_keys=True))
+    else:
+        print(render_report(payload, limit=args.limit))
+
+
 def main():
     parser = argparse.ArgumentParser(prog="ASCR", description="AI Supply Chain Stock Discovery System")
     sub = parser.add_subparsers(dest="command")
@@ -275,13 +284,18 @@ def main():
     p = sub.add_parser("ranking", help="Ranking quality report")
     p.add_argument("--lookback", type=int, default=90)
 
+    p = sub.add_parser("frontier", help="Frontier radar report")
+    p.add_argument("--limit", type=int, default=12)
+    p.add_argument("--json", action="store_true")
+
     args = parser.parse_args()
     commands = {
         "init-db": cmd_init_db, "run-daily": cmd_run_daily, "score": cmd_score,
         "report": cmd_report, "add-position": cmd_add_position,
         "update-position": cmd_update_position, "list-alerts": cmd_list_alerts,
         "explain": cmd_explain, "backtest": cmd_backtest, "feedback": cmd_feedback,
-        "regime": cmd_regime, "shadows": cmd_shadows, "backtest-historical": cmd_backtest_historical, "ranking": cmd_ranking,
+        "regime": cmd_regime, "shadows": cmd_shadows, "backtest-historical": cmd_backtest_historical,
+        "ranking": cmd_ranking, "frontier": cmd_frontier,
     }
     if args.command in commands:
         commands[args.command](args)
