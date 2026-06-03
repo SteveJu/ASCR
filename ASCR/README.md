@@ -173,7 +173,7 @@ The stricter live replay starts with blank memory and applies ASCR-H-style execu
 - **57 configured tickers** across 11 sectors: compute, optical, networking, memory, semicap, data_center, eda_ip, energy_grid, power_cooling, memory_storage, new_additions
 - **Excluded from trading** (tracked for signal intelligence only): NVDA, GOOG, GOOGL, MSFT, AMZN, META, AAPL, TSM, AVGO
 - Dynamic discovery: new tickers found via news/counterparty/SEC scanning
-- Pruning: 2+ triggers required to remove (D-tier, no events, negative sentiment, delisted)
+- Pruning: 2+ removal-eligible triggers required; D-tier needs enough scoring history, negative sentiment requires both count and ratio, and `excluded_from_trading`/`keep` names are exempt.
 
 ## Bubble Protection
 

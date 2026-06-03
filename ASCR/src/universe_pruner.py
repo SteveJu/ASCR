@@ -1,7 +1,7 @@
 """Universe Pruner — automatically remove tickers that no longer belong.
 
 Triggers for removal:
-1. D-Tier for 30+ consecutive days
+1. D-Tier for 30+ scoring days
 2. Zero events for 60+ days (lost relevance)
 3. Delisted or market cap < $500M
 4. Negative sentiment accumulation (multiple SELL/AVOID verdicts)
@@ -24,10 +24,12 @@ logger = get_logger("universe_pruner")
 UNIVERSE_FILE = os.path.join(config.BASE_DIR, "config", "universe.yaml")
 
 # Thresholds
-D_TIER_DAYS = 30          # D-rated for this many days → trigger
+D_TIER_DAYS = 30          # D-rated for this many scoring days → removal-eligible trigger
+D_TIER_MIN_SCORING_DAYS = 15  # minimum sample before D-tier can even enter watch
 NO_EVENT_DAYS = 60        # No events for this long → trigger
 MIN_MARKET_CAP = 500_000_000  # $500M floor
-NEGATIVE_VERDICT_THRESHOLD = 3  # 3+ SELL/AVOID in 30 days → trigger
+NEGATIVE_VERDICT_THRESHOLD = 3  # 3+ SELL/AVOID in 30 days → trigger if ratio also high
+NEGATIVE_VERDICT_MIN_RATIO = 0.20  # avoid flagging high-volume names for a few bearish events
 SECTOR_HEAT_DEATH_PCT = 0.7    # 70% of sector declining → flag sector
 
 # Protected tickers (never auto-remove)
@@ -54,27 +56,44 @@ def _get_kept_tickers() -> set:
     try:
         with open(UNIVERSE_FILE) as f:
             u = yaml.safe_load(f)
-        return set(u.get("keep", []))
+        return {str(t).upper() for t in u.get("keep", [])}
+    except Exception:
+        return set()
+
+
+def _get_excluded_from_trading() -> set:
+    """Get tickers tracked for intelligence only; they should not be auto-pruned."""
+    try:
+        excluded = config.universe().get("excluded_from_trading", {})
+        if isinstance(excluded, dict):
+            tickers = excluded.get("tickers", [])
+        elif isinstance(excluded, list):
+            tickers = excluded
+        else:
+            tickers = []
+        return {str(t).upper() for t in tickers}
     except Exception:
         return set()
 
 
 def check_d_tier(ticker: str, conn) -> dict | None:
-    """Check if ticker has been D-rated for 30+ consecutive days."""
+    """Check if ticker has been D-rated across enough recent scoring days."""
     rows = conn.execute(
         "SELECT date, rating FROM scores WHERE ticker=? ORDER BY date DESC LIMIT ?",
         (ticker, D_TIER_DAYS)
     ).fetchall()
 
-    if len(rows) < 5:  # Need enough data
+    if len(rows) < D_TIER_MIN_SCORING_DAYS:  # Need enough data
         return None
 
     d_count = sum(1 for r in rows if r[1] == "D")
     if d_count >= len(rows) * 0.8:  # 80%+ D-rated
+        removal_eligible = len(rows) >= D_TIER_DAYS
         return {
             "trigger": "d_tier",
             "detail": f"D-rated {d_count}/{len(rows)} of last scoring days",
-            "severity": "medium",
+            "severity": "medium" if removal_eligible else "low",
+            "removal_eligible": removal_eligible,
         }
     return None
 
@@ -96,7 +115,22 @@ def check_no_events(ticker: str, conn) -> dict | None:
     return None
 
 
-def check_delisted(ticker: str) -> dict | None:
+def _has_recent_local_price(ticker: str, conn, days: int = 10) -> bool:
+    """Return True if local price history has a recent positive close."""
+    if conn is None:
+        return False
+    cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+    try:
+        count = conn.execute(
+            "SELECT COUNT(*) FROM prices WHERE ticker=? AND date >= ? AND close > 0",
+            (ticker, cutoff)
+        ).fetchone()[0]
+        return count > 0
+    except Exception:
+        return False
+
+
+def check_delisted(ticker: str, conn=None) -> dict | None:
     """Check if ticker is delisted or below market cap floor."""
     try:
         import yfinance as yf
@@ -106,9 +140,11 @@ def check_delisted(ticker: str) -> dict | None:
         # Check if stock still trades
         price = info.get("regularMarketPrice") or info.get("previousClose", 0)
         if not price or price <= 0:
+            if _has_recent_local_price(ticker, conn):
+                return None
             return {
                 "trigger": "delisted",
-                "detail": "No market price available — possibly delisted",
+                "detail": "No market price available and no recent local price — possibly delisted",
                 "severity": "critical",
             }
 
@@ -137,11 +173,18 @@ def check_negative_sentiment(ticker: str, conn) -> dict | None:
         return None
 
     negative = [r for r in rows if r[0] in ("SELL", "AVOID")]
+    negative_ratio = len(negative) / len(rows)
 
-    if len(negative) >= NEGATIVE_VERDICT_THRESHOLD:
+    if (
+        len(negative) >= NEGATIVE_VERDICT_THRESHOLD
+        and negative_ratio >= NEGATIVE_VERDICT_MIN_RATIO
+    ):
         return {
             "trigger": "negative_sentiment",
-            "detail": f"{len(negative)}/{len(rows)} events are SELL/AVOID in last 30d",
+            "detail": (
+                f"{len(negative)}/{len(rows)} events "
+                f"({negative_ratio:.0%}) are SELL/AVOID in last 30d"
+            ),
             "severity": "high",
         }
 
@@ -216,13 +259,15 @@ def evaluate_all() -> dict:
     tickers = config.all_tickers()
     open_positions = _get_open_positions()
     kept = _get_kept_tickers()
+    excluded = _get_excluded_from_trading()
+    exempt = PROTECTED | kept | excluded
 
     with db.get_conn() as conn:
         remove = []
         watch = []
 
         for ticker in tickers:
-            if ticker in PROTECTED or ticker in kept:
+            if ticker in exempt:
                 continue
 
             triggers = []
@@ -242,7 +287,7 @@ def evaluate_all() -> dict:
 
             # Skip yfinance check for speed (only check if already has triggers)
             if triggers:
-                t4 = check_delisted(ticker)
+                t4 = check_delisted(ticker, conn)
                 if t4:
                     triggers.append(t4)
 
@@ -250,7 +295,8 @@ def evaluate_all() -> dict:
                 continue
 
             has_position = ticker in open_positions
-            has_critical = any(t["severity"] == "critical" for t in triggers)
+            removal_triggers = [t for t in triggers if t.get("removal_eligible", True)]
+            has_critical = any(t["severity"] == "critical" for t in removal_triggers)
 
             reason = "; ".join(t["detail"] for t in triggers)
 
@@ -258,12 +304,13 @@ def evaluate_all() -> dict:
                 "ticker": ticker,
                 "triggers": triggers,
                 "trigger_count": len(triggers),
+                "removal_trigger_count": len(removal_triggers),
                 "reason": reason,
                 "has_position": has_position,
             }
 
             # 2+ triggers OR 1 critical → recommend removal
-            if len(triggers) >= 2 or has_critical:
+            if len(removal_triggers) >= 2 or has_critical:
                 if has_position:
                     entry["action"] = "sell_then_remove"
                     watch.append(entry)  # Can't remove yet, has position
@@ -280,6 +327,7 @@ def evaluate_all() -> dict:
         "watch": sorted(watch, key=lambda x: -x["trigger_count"]),
         "sector_health": sector_health,
         "protected_positions": sorted(open_positions),
+        "exempt_tickers": sorted(exempt & set(tickers)),
     }
 
     if remove:

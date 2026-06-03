@@ -111,7 +111,7 @@ And conviction maps: HIGH=3, MEDIUM=2, LOW=1
 1. **Hard stop** — P&L below sector-specific threshold (default -20%)
 2. **Trailing stop** — Drop from peak exceeds sector threshold (default -25%)
 3. **Thesis break** — Negative events + high heat → original thesis invalidated
-4. **Universe pruner** — D-tier rating, no events 60d, negative sentiment, delisted
+4. **Universe pruner** — D-tier history, no events 60d, ratio-aware negative sentiment, delisted
 5. **Smart rotation** — Only sell weakest held if candidate scores >50% better
 
 Sector-aware stops: sentiment stocks get tighter stops (-15%/-18%), infrastructure gets looser (-22%/-28%).
@@ -178,7 +178,9 @@ The feedback layer is bounded and validated strict as-of: each historical scorin
 
 ### Universe Pruner (`src/universe_pruner.py`)
 - 5 trigger types: D-tier, no events 60d, negative sentiment, sector heat death, delisted
-- 2+ triggers required to remove (except delisted = immediate)
+- 2+ removal-eligible triggers required to remove (except confirmed delisted = immediate)
+- D-tier needs a minimum scoring sample and only counts toward removal after 30 scoring days
+- `excluded_from_trading` and `keep` tickers are exempt from auto-pruning
 - Never removes tickers with open positions
 
 ## 9. LLM Configuration
