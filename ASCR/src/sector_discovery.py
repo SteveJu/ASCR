@@ -283,7 +283,7 @@ def _extract_company_names(headline: str) -> list[str]:
 
     # Only keep multi-word capitalized phrases as potential company names
     multi_word = re.findall(r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)', headline)
-
+    
     # Also check whole phrases against skip list
     SKIP_PHRASES = {
         "Wall St", "Stock Titan", "Fast Company", "Tech Buzz",
@@ -293,7 +293,7 @@ def _extract_company_names(headline: str) -> list[str]:
         "Data Center", "Data Centers", "Breakthrough Technologies",
         "Lake Tahoe", "Google Signs", "Price Target",
     }
-
+    
     for phrase in multi_word:
         if phrase in SKIP_PHRASES:
             continue
@@ -342,6 +342,8 @@ def scan_for_new_mentions() -> dict:
                         "query": query,
                         "domain_id": spec.get("domain_id", ""),
                         "domain_name": spec.get("domain_name", ""),
+                        "subdomain_id": spec.get("subdomain_id", ""),
+                        "subdomain_name": spec.get("subdomain_name", ""),
                     })
 
             time.sleep(0.3)
@@ -362,6 +364,8 @@ def scan_for_new_mentions() -> dict:
                         json.dumps({
                             "domain_id": h.get("domain_id", ""),
                             "domain_name": h.get("domain_name", ""),
+                            "subdomain_id": h.get("subdomain_id", ""),
+                            "subdomain_name": h.get("subdomain_name", ""),
                         }),
                     )
                 )
@@ -388,6 +392,7 @@ def detect_anomalies(window_days: int = 7, min_mentions: int = 3) -> list[dict]:
     with db.get_conn() as conn:
         recent = conn.execute("""
             SELECT company_name, COUNT(*) as cnt,
+                   GROUP_CONCAT(DISTINCT headline, '|||') as headlines,
                    MIN(scan_date) as first_seen
             FROM mention_tracker
             WHERE scan_date >= ?
@@ -411,14 +416,7 @@ def detect_anomalies(window_days: int = 7, min_mentions: int = 3) -> list[dict]:
                 ).fetchone()
 
                 if not existing:
-                    headline_rows = conn.execute("""
-                        SELECT DISTINCT headline
-                        FROM mention_tracker
-                        WHERE company_name = ? AND scan_date >= ?
-                        ORDER BY headline
-                        LIMIT 5
-                    """, (company, recent_start)).fetchall()
-                    headlines = [row["headline"] for row in headline_rows]
+                    headlines = (r["headlines"] or "").split("|||")[:5]
                     anomalies.append({
                         "company": company,
                         "recent_mentions": r["cnt"],
@@ -452,10 +450,11 @@ Configured frontier domains:
 For each company, answer:
 1. Is this a real new frontier bottleneck node? (yes/no/unclear)
 2. If yes: what configured domain best fits? Use one of the domain ids above when possible.
-3. If yes: what sector or bottleneck? (e.g., "humanoid actuators", "space propulsion", "quantum cryogenics", "power conversion")
-4. If yes: what's the thesis? (one sentence)
-5. What's the ticker? (if you know it, otherwise null)
-6. Confidence: high/medium/low
+3. If yes: what configured subdomain best fits? Use a subdomain id above when possible.
+4. If yes: what sector or bottleneck? (e.g., "humanoid actuators", "space propulsion", "quantum cryogenics", "power conversion")
+5. If yes: what's the thesis? (one sentence)
+6. What's the ticker? (if you know it, otherwise null)
+7. Confidence: high/medium/low
 
 Companies to assess:
 {companies_text}
@@ -472,6 +471,7 @@ Respond with ONLY valid JSON array:
     "company": "name",
     "is_real": true/false,
     "domain": "configured_domain_id or null",
+    "subdomain": "configured_subdomain_id or null",
     "sector": "sector name or null",
     "thesis": "one sentence or null",
     "ticker": "TICK or null",
@@ -702,6 +702,7 @@ def get_discovery_status() -> dict:
         ).fetchone()[0]
 
     domain_counts = {}
+    subdomain_counts = {}
     for row in mention_contexts:
         try:
             context = json.loads(row["context"] or "{}")
@@ -710,15 +711,23 @@ def get_discovery_status() -> dict:
         domain_id = context.get("domain_id")
         if domain_id:
             domain_counts[domain_id] = domain_counts.get(domain_id, 0) + 1
+        subdomain_id = context.get("subdomain_id")
+        if subdomain_id:
+            subdomain_counts[subdomain_id] = subdomain_counts.get(subdomain_id, 0) + 1
     top_domains = [
         {"domain": domain, "count": count}
         for domain, count in sorted(domain_counts.items(), key=lambda item: item[1], reverse=True)[:10]
+    ]
+    top_subdomains = [
+        {"subdomain": subdomain, "count": count}
+        for subdomain, count in sorted(subdomain_counts.items(), key=lambda item: item[1], reverse=True)[:10]
     ]
 
     return {
         "flagged": [dict(r) for r in flagged],
         "top_mentions": [{"company": r["company_name"], "count": r["cnt"]} for r in top_mentions],
         "top_domains": top_domains,
+        "top_subdomains": top_subdomains,
         "total_scans": total_scans,
         "total_companies": total_companies,
         "total_anomalies": total_anomalies,
@@ -749,6 +758,11 @@ def format_telegram_status() -> str:
         lines.append("\n━━━ 🧭 Top Domains (7d) ━━━")
         for d in status["top_domains"][:5]:
             lines.append(f"  {d['count']}x  {d['domain']}")
+
+    if status.get("top_subdomains"):
+        lines.append("\n━━━ 🔎 Top Subdomains (7d) ━━━")
+        for d in status["top_subdomains"][:5]:
+            lines.append(f"  {d['count']}x  {d['subdomain']}")
 
     if status["top_mentions"]:
         lines.append("\n━━━ 📊 Top Mentions (7d) ━━━")

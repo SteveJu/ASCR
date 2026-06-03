@@ -200,9 +200,17 @@ def sync_frontier_domain_receipts(as_of: str | None = None) -> dict[str, int]:
 
 def sync_all(as_of: str | None = None) -> dict[str, dict[str, int]]:
     """Sync all configured thesis sources."""
+    try:
+        from src.frontier_promotion import sync_shadow_receipts
+
+        frontier_discovery = sync_shadow_receipts(as_of=as_of)
+    except Exception:
+        frontier_discovery = {"inserted": 0, "updated": 0, "skipped": 0}
+
     return {
         "chokepoints": sync_chokepoint_receipts(as_of=as_of),
         "frontier_domains": sync_frontier_domain_receipts(as_of=as_of),
+        "frontier_discovery": frontier_discovery,
     }
 
 

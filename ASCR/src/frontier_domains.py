@@ -44,6 +44,24 @@ def domain_ids(data: dict[str, Any] | None = None) -> set[str]:
     return {domain["id"] for domain in domains(data)}
 
 
+def promotion_gate(data: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Return frontier promotion gate policy with conservative defaults."""
+    data = data or load_frontier_domains()
+    defaults = {
+        "min_promotion_score": 75,
+        "min_watch_score": 55,
+        "min_mentions": 3,
+        "eligible_confidence": ["high", "medium"],
+        "require_ticker": True,
+        "require_hard_evidence": True,
+        "shadow_source": "frontier_discovery",
+    }
+    configured = data.get("promotion_gate", {})
+    if isinstance(configured, dict):
+        defaults.update(configured)
+    return defaults
+
+
 def discovery_query_specs(
     data: dict[str, Any] | None = None,
     domain_id: str | None = None,
@@ -58,7 +76,18 @@ def discovery_query_specs(
                 "query": str(query),
                 "domain_id": domain["id"],
                 "domain_name": domain["name"],
+                "subdomain_id": "",
+                "subdomain_name": "",
             })
+        for subdomain in domain.get("subdomains", []):
+            for query in subdomain.get("early_signal_queries", []):
+                specs.append({
+                    "query": str(query),
+                    "domain_id": domain["id"],
+                    "domain_name": domain["name"],
+                    "subdomain_id": str(subdomain.get("id", "")),
+                    "subdomain_name": str(subdomain.get("name", "")),
+                })
     return specs
 
 
@@ -68,9 +97,13 @@ def prompt_context(data: dict[str, Any] | None = None) -> str:
     for domain in domains(data):
         bottlenecks = ", ".join(domain.get("bottlenecks", [])[:5])
         validation = ", ".join(domain.get("validation_signals", [])[:3])
+        subdomains = ", ".join(
+            f"{row.get('id')}={row.get('name')}" for row in domain.get("subdomains", [])[:6]
+        )
+        subdomain_text = f" Subdomains: {subdomains}." if subdomains else ""
         lines.append(
             f"- {domain['id']} ({domain['name']}): {domain.get('thesis', '')} "
-            f"Watch bottlenecks: {bottlenecks}. Validate with: {validation}."
+            f"Watch bottlenecks: {bottlenecks}.{subdomain_text} Validate with: {validation}."
         )
     return "\n".join(lines)
 
@@ -85,6 +118,7 @@ def render_report(data: dict[str, Any] | None = None) -> str:
     ]
     for domain in rows:
         query_count = len(domain.get("early_signal_queries", []))
+        query_count += sum(len(row.get("early_signal_queries", [])) for row in domain.get("subdomains", []))
         bottleneck_count = len(domain.get("bottlenecks", []))
         lines.append(f"- {domain['id']}: {domain['name']}")
         lines.append(f"  Queries: {query_count} | Bottlenecks: {bottleneck_count}")

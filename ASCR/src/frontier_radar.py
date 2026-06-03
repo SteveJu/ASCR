@@ -16,10 +16,12 @@ def _domain_rows() -> list[dict[str, Any]]:
 
     rows = []
     for domain in domains():
+        query_count = len(domain.get("early_signal_queries", []))
+        query_count += sum(len(row.get("early_signal_queries", [])) for row in domain.get("subdomains", []))
         rows.append({
             "id": domain["id"],
             "name": domain["name"],
-            "query_count": len(domain.get("early_signal_queries", [])),
+            "query_count": query_count,
             "bottleneck_count": len(domain.get("bottlenecks", [])),
             "goal": domain.get("discovery_goal", ""),
         })
@@ -38,22 +40,34 @@ def _receipt_rows(limit: int) -> list[dict[str, Any]]:
     return list_receipts(limit=limit)
 
 
+def _promotion_rows(limit: int) -> list[dict[str, Any]]:
+    try:
+        from src.frontier_promotion import evaluate_candidates
+
+        return evaluate_candidates(limit=limit)
+    except Exception:
+        return []
+
+
 def build_payload(limit: int = 12) -> dict[str, Any]:
     """Build a structured frontier radar payload."""
     status = _discovery_status()
     receipts = _receipt_rows(limit)
+    promotion = _promotion_rows(limit)
     return {
         "policy": "discovery_only_watch_only",
         "domains": _domain_rows(),
         "discovery": {
             "flagged": status.get("flagged", []),
             "top_domains": status.get("top_domains", []),
+            "top_subdomains": status.get("top_subdomains", []),
             "top_mentions": status.get("top_mentions", []),
             "total_scans": status.get("total_scans", 0),
             "total_companies": status.get("total_companies", 0),
             "total_anomalies": status.get("total_anomalies", 0),
             "real_signals": status.get("real_signals", 0),
         },
+        "promotion": promotion,
         "receipts": receipts,
     }
 
@@ -88,6 +102,11 @@ def render_report(payload: dict[str, Any], limit: int = 12) -> str:
         lines.append("- Top domains: " + ", ".join(
             f"{row['domain']} ({row['count']})" for row in top_domains[:5]
         ))
+    top_subdomains = discovery.get("top_subdomains", [])
+    if top_subdomains:
+        lines.append("- Top subdomains: " + ", ".join(
+            f"{row['subdomain']} ({row['count']})" for row in top_subdomains[:5]
+        ))
 
     flagged = discovery.get("flagged", [])
     if flagged:
@@ -96,6 +115,18 @@ def render_report(payload: dict[str, Any], limit: int = 12) -> str:
             ticker = f" ({row['ticker_guess']})" if row.get("ticker_guess") else ""
             domain = row.get("domain_guess") or row.get("sector_guess") or "unknown"
             lines.append(f"- {row['company_name']}{ticker}: {domain} - {row.get('thesis') or '?'}")
+
+    promotion = payload.get("promotion", [])
+    lines.extend(["", "Promotion Gate"])
+    if promotion:
+        for row in promotion[:limit]:
+            ticker = f" ({row['ticker']})" if row.get("ticker") else ""
+            lines.append(
+                f"- {row['decision']}: {row['company_name']}{ticker} "
+                f"score={row['score']} domain={row.get('domain') or '-'}"
+            )
+    else:
+        lines.append("- No candidates currently above the review gate.")
 
     receipts = payload.get("receipts", [])
     lines.extend(["", "Thesis Receipts"])

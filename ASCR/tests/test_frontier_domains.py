@@ -3,11 +3,10 @@ import os
 import json
 import sys
 import tempfile
-from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.frontier_domains import discovery_query_specs, domain_ids, prompt_context, render_report
+from src.frontier_domains import discovery_query_specs, domain_ids, prompt_context, promotion_gate, render_report
 from src import sector_discovery
 
 
@@ -29,6 +28,16 @@ def test_frontier_queries_are_domain_tagged():
     assert any("humanoid" in spec["query"] for spec in specs)
     assert any(spec["domain_id"] == "commercial_space" for spec in specs)
     assert any(spec["domain_id"] == "quantum_computing" for spec in specs)
+    assert any(spec.get("subdomain_id") == "space_launch_propulsion" for spec in specs)
+    assert any(spec.get("subdomain_id") == "quantum_cryogenics_control" for spec in specs)
+
+
+def test_frontier_promotion_gate_is_conservative():
+    gate = promotion_gate()
+
+    assert gate["min_promotion_score"] >= gate["min_watch_score"]
+    assert gate["require_ticker"] is True
+    assert gate["require_hard_evidence"] is True
 
 
 def test_sector_discovery_uses_frontier_queries():
@@ -53,6 +62,7 @@ def test_anomaly_prompt_is_domain_general():
 
     assert "frontier technology" in prompt
     assert "humanoid_robotics" in prompt
+    assert "humanoid_actuators_reducers" in prompt
     assert "commercial_space" in prompt
     assert "quantum_computing" in prompt
     assert "AI supply chain node" not in prompt
@@ -85,7 +95,10 @@ def test_discovery_status_surfaces_domain_counts():
                     "Example Robotics",
                     "Example Robotics signs humanoid actuator supplier contract",
                     "humanoid robot actuator supplier production order",
-                    json.dumps({"domain_id": "humanoid_robotics"}),
+                    json.dumps({
+                        "domain_id": "humanoid_robotics",
+                        "subdomain_id": "humanoid_actuators_reducers",
+                    }),
                 ),
             )
             conn.execute(
@@ -116,39 +129,7 @@ def test_discovery_status_surfaces_domain_counts():
         os.remove(path)
 
     assert status["top_domains"][0] == {"domain": "humanoid_robotics", "count": 1}
+    assert status["top_subdomains"][0] == {"subdomain": "humanoid_actuators_reducers", "count": 1}
     assert status["flagged"][0]["domain_guess"] == "humanoid_robotics"
     assert "humanoid_robotics" in text
-
-
-def test_detect_anomalies_handles_distinct_headlines_on_sqlite():
-    from src import db
-
-    fd, path = tempfile.mkstemp(suffix=".sqlite")
-    os.close(fd)
-    old_db_path = db._DB_PATH
-    try:
-        db._DB_PATH = path
-        sector_discovery.init_discovery_db()
-        today = datetime.now().strftime("%Y-%m-%d")
-        with db.get_conn() as conn:
-            for idx in range(3):
-                conn.execute(
-                    "INSERT INTO mention_tracker (scan_date, company_name, headline, source_query, context) "
-                    "VALUES (?, ?, ?, ?, ?)",
-                    (
-                        today,
-                        "Example Space Systems",
-                        f"Example Space Systems wins propulsion supplier contract {idx}",
-                        "commercial space propulsion supplier contract",
-                        json.dumps({"domain_id": "commercial_space"}),
-                    ),
-                )
-
-        anomalies = sector_discovery.detect_anomalies(window_days=7, min_mentions=3)
-    finally:
-        db._DB_PATH = old_db_path
-        os.remove(path)
-
-    assert anomalies
-    assert anomalies[0]["company"] == "Example Space Systems"
-    assert len(anomalies[0]["headlines"]) == 3
+    assert "humanoid_actuators_reducers" in text

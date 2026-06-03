@@ -128,6 +128,8 @@ may emerge before they belong in the trading universe:
 
 The radar is discovery-only. It does not bypass the recommender, does not add
 tickers automatically, and does not send paper-trading orders to ASCR-H.
+Flagged anomalies now pass through a conservative promotion gate that can mark
+them for human review or shadow tracking without entering the trading universe.
 
 Useful local commands:
 
@@ -136,6 +138,8 @@ python3 -m src.frontier_domains --queries
 python3 -m src.chokepoint --report --limit 20
 python3 -m src.thesis_receipts --sync
 python3 -m src.frontier_radar
+python3 -m src.frontier_promotion
+python3 -m src.frontier_promotion --sync-shadow
 python3 -m src.main frontier --json
 ```
 

@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.1.0 - Frontier Promotion Gate
+
+- Added subdomain-tagged frontier discovery queries for humanoid robotics, commercial space, and quantum computing
+- Added a conservative frontier promotion gate for `promotion_review`, `shadow_watch`, and `monitor` decisions
+- Added watch-only shadow receipt sync for frontier anomalies with public tickers
+- Updated Frontier Radar reporting to show promotion-gate decisions and subdomain heat
+
+Validation:
+
+- ASCR tests: 83 passed
+- Public safety scan found no private token, private path, or private repo name in touched frontier files
+
 ## v2.0.0 - Event Research Scoring And Explosive Alerts
 
 - Removed live momentum contribution from opportunity scoring; price trend remains available as diagnostic price confirmation

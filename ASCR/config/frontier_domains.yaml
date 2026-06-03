@@ -11,6 +11,15 @@ global_principles:
 - Treat demos, concept videos, generic fundraising, and broad market-size articles as low-quality signals unless tied to a specific supplier or customer.
 - Require at least one non-social evidence source before promotion into the trading universe.
 
+promotion_gate:
+  min_promotion_score: 75
+  min_watch_score: 55
+  min_mentions: 3
+  eligible_confidence: [high, medium]
+  require_ticker: true
+  require_hard_evidence: true
+  shadow_source: frontier_discovery
+
 domains:
 - id: ai_infrastructure
   name: AI infrastructure and data center supply chain
@@ -57,6 +66,25 @@ domains:
   - humanoid robot joint module mass production supplier
   - humanoid robot contract manufacturer production ramp
   - robotics company humanoid fleet deployment supplier
+  subdomains:
+  - id: humanoid_actuators_reducers
+    name: Actuators, reducers, and joint modules
+    early_signal_queries:
+    - humanoid robot actuator backlog supplier
+    - harmonic reducer supplier humanoid robot OEM order
+    - joint module supplier humanoid robot production ramp
+  - id: humanoid_sensing_hands
+    name: Force sensing, tactile systems, and dexterous hands
+    early_signal_queries:
+    - force torque sensor supplier humanoid robot contract
+    - tactile sensor supplier humanoid robot production
+    - humanoid robot hand supplier fleet deployment
+  - id: humanoid_manufacturing_reliability
+    name: Contract manufacturing and reliability testing
+    early_signal_queries:
+    - humanoid robot contract manufacturer volume production
+    - humanoid robot reliability testing supplier certification
+    - robot OEM supplier capacity expansion humanoid
   validation_signals:
   - Production order tied to named robot OEM
   - Unit-volume target moves from pilot to fleet deployment
@@ -112,6 +140,25 @@ domains:
   - defense space contract small satellite supplier
   - launch cadence bottleneck avionics propulsion supplier
   - ground station network contract space company
+  subdomains:
+  - id: space_launch_propulsion
+    name: Launch cadence, propulsion, valves, and avionics
+    early_signal_queries:
+    - launch vehicle propulsion supplier funded contract
+    - rocket valve avionics supplier launch cadence backlog
+    - reusable launch supplier production ramp contract
+  - id: space_satellite_payloads
+    name: Satellite buses, payloads, solar arrays, and space chips
+    early_signal_queries:
+    - satellite bus supplier backlog defense commercial space
+    - space optical communications payload supplier order
+    - radiation hardened chip supplier satellite contract
+  - id: space_ground_defense
+    name: Ground stations, SSA, and defense procurement
+    early_signal_queries:
+    - ground station network supplier space contract
+    - space situational awareness defense award supplier
+    - SDA satellite supplier milestone payment contract
   validation_signals:
   - Contract backlog converts to launch, delivery, or milestone payment
   - Launch cadence improves without major failures
@@ -141,6 +188,25 @@ domains:
   - quantum networking defense contract supplier
   - dilution refrigerator quantum computing backlog
   - quantum control electronics supplier revenue
+  subdomains:
+  - id: quantum_cryogenics_control
+    name: Cryogenics, dilution refrigerators, and control electronics
+    early_signal_queries:
+    - dilution refrigerator supplier quantum backlog revenue
+    - quantum control electronics supplier customer contract
+    - cryogenic microwave component supplier quantum computing order
+  - id: quantum_photonics_networking
+    name: Photonics, lasers, interconnects, and quantum networking
+    early_signal_queries:
+    - quantum photonics chip supplier production milestone
+    - quantum networking defense contract supplier photonics
+    - laser supplier quantum computing revenue backlog
+  - id: quantum_error_correction_customers
+    name: Error correction milestones and paid customer access
+    early_signal_queries:
+    - logical qubit error correction customer contract
+    - quantum computing paid cloud access enterprise milestone
+    - quantum error correction milestone third party validation
   validation_signals:
   - Error rates, logical qubits, or fidelity milestones improve with third-party validation
   - Funded government or enterprise contract names deliverables
