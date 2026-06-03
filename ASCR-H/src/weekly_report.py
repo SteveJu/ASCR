@@ -1,17 +1,42 @@
 """Weekly performance report — generated Friday after market close."""
+import os
 from datetime import datetime, timedelta
 from src import db
-from src.momentum_live import _get_live_price, _get_latest_scores
 from src.decision_logger import get_benchmark_price, BENCHMARK_TICKER
 from src.utils import get_logger
 
 logger = get_logger("weekly_report")
 
 
+def _get_live_price(ticker: str) -> float:
+    """Get live price with ASCR DB fallback."""
+    try:
+        import yfinance as yf
+        quote = yf.Ticker(ticker)
+        info = quote.info or {}
+        price = info.get("regularMarketPrice") or info.get("currentPrice")
+        if not price:
+            hist = quote.history(period="1d")
+            if len(hist) > 0:
+                price = float(hist["Close"].iloc[-1])
+        if price and price > 0:
+            return float(price)
+    except Exception as exc:
+        logger.warning(f"Weekly price fetch failed ticker={ticker}: {exc}")
+
+    prices = db.read_radar_prices(ticker, days=1)
+    return float(prices[0]["close"]) if prices else 0.0
+
+
+def _get_latest_scores() -> list[dict]:
+    """Latest ASCR scores, sorted by event/research opportunity."""
+    return db.read_radar_scores()
+
+
 def generate_weekly_report() -> str:
     """Generate comprehensive weekly report."""
     today = datetime.now().strftime("%Y-%m-%d")
-    lines = [f"📈 <b>Momentum Sprint Weekly Report — {today}</b>\n"]
+    lines = [f"📈 <b>Event Radar Weekly Report — {today}</b>\n"]
 
     # Account status
     account = db.get_account()
@@ -27,13 +52,17 @@ def generate_weekly_report() -> str:
     lines.append(f"💰 Cash: ${cash:,.0f} | Positions: ${pos_value:,.0f}")
     lines.append(f"📉 Max DD: {dd:.1f}% from peak ${peak:,.0f}\n")
 
-    # QQQ benchmark
+    # QQQ benchmark from paper-trading inception.
     qqq_price = _get_live_price("QQQ")
-    # Get QQQ price from ~when we started (approximate)
+    with db.get_conn() as conn:
+        inception_row = conn.execute("SELECT MIN(date) FROM paper_orders").fetchone()
+    inception_date = inception_row[0] if inception_row and inception_row[0] else today
     with db.radar_conn() as conn:
         qqq_start = conn.execute("""
-            SELECT close FROM prices WHERE ticker='QQQ' ORDER BY date ASC LIMIT 1
-        """).fetchone()
+            SELECT close FROM prices
+            WHERE ticker='QQQ' AND date<=?
+            ORDER BY date DESC LIMIT 1
+        """, (inception_date,)).fetchone()
     if qqq_start and qqq_price:
         qqq_ret = (qqq_price / qqq_start[0] - 1) * 100
         alpha = ret - qqq_ret
@@ -72,15 +101,18 @@ def generate_weekly_report() -> str:
     else:
         lines.append("<i>No trades this week.</i>\n")
 
-    # Momentum ranking snapshot
+    # ASCR ranking snapshot
     scores = _get_latest_scores()
     if scores:
-        lines.append("<b>🏆 Top-10 Momentum:</b>")
+        lines.append("<b>🏆 Top-10 Radar Scores:</b>")
         held = {p["ticker"] for p in positions}
         for i, s in enumerate(scores[:10]):
             marker = "⭐" if s["ticker"] in held else "  "
-            lines.append(f"  {i+1}. {marker}{s['ticker']:6s} mom={s['momentum']:.0f} "
-                        f"opp={s['opportunity']:.0f} [{s['rating']}]")
+            opp = s.get("opportunity_score", s.get("opportunity", 0)) or 0
+            evidence = s.get("evidence_score", s.get("evidence", 0)) or 0
+            asymmetry = s.get("asymmetry_score", s.get("asymmetry", 0)) or 0
+            lines.append(f"  {i+1}. {marker}{s['ticker']:6s} opp={opp:.0f} "
+                        f"ev={evidence:.0f} asym={asymmetry:.0f} [{s['rating']}]")
         lines.append("")
 
     # Regime check

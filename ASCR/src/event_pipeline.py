@@ -1066,14 +1066,18 @@ def run_pipeline(min_confidence=0.5, min_evidence_delta=3) -> list:
         events.append({
             "ticker": result.get("ticker"),
             "headline": article["title"],
+            "source": article.get("source_query", ""),
             "event_type": result.get("event_type"),
             "evidence_delta": result.get("evidence_delta", 0),
+            "risk_delta": result.get("risk_delta", 0),
             "confidence": result.get("confidence", 0),
+            "priced_in_pct": result.get("priced_in_pct", 0),
             "summary": result.get("summary", ""),
             "verdict": result.get("verdict", ""),
             "conviction": result.get("conviction", ""),
             "upside_potential": result.get("upside_potential", ""),
             "investment_thesis": result.get("investment_thesis", ""),
+            "catalyst": result.get("catalyst", ""),
         })
         # Record in experience tracker
         try:
@@ -1222,8 +1226,13 @@ def run_pipeline(min_confidence=0.5, min_evidence_delta=3) -> list:
     # Push to Telegram
     try:
         from src.telegram_notifier import send, send_event_signals
+        from src.event_alerts import filter_explosive_events
         if events:
-            send_event_signals(format_events_telegram(events))
+            alert_events = filter_explosive_events(events)
+            if alert_events:
+                send_event_signals(format_events_telegram(alert_events))
+            else:
+                logger.info(f"Telegram event push skipped: 0/{len(events)} explosive events")
     except Exception as e:
         logger.warning(f"Telegram push: {e}")
 
@@ -1358,14 +1367,15 @@ def get_recent_events(ticker=None, days=7) -> list:
 def format_events_telegram(events: list) -> str:
     """Format events for Telegram notification."""
     if not events:
-        return "📰 No new actionable events today."
+        return "📰 No explosive events today."
 
-    lines = [f"📰 <b>Event Pipeline — {len(events)} signals</b>\n"]
+    lines = [f"💥 <b>Explosive Event Alerts — {len(events)}</b>\n"]
     for e in events:
         emoji = "🔥" if e.get("evidence_delta", 0) >= 7 else "📊" if e.get("evidence_delta", 0) >= 5 else "📰"
         lines.append(f"{emoji} <b>{e['ticker']}</b>: {e['headline']}")
         lines.append(f"   ev={e.get('evidence_delta',0):+.0f} | "
-                    f"{e.get('event_type','')} | conf={e.get('confidence',0):.0%}")
+                    f"{e.get('event_type','')} | conf={e.get('confidence',0):.0%} | "
+                    f"alert={e.get('_alert_score', 0):.0f}")
         if e.get("summary"):
             lines.append(f"   <i>{e['summary']}</i>")
         lines.append("")

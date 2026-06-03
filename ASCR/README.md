@@ -1,4 +1,4 @@
-# ASCR v1.9
+# ASCR v2.0
 
 AI Supply Chain and Frontier Technology Opportunity Discovery System.
 
@@ -12,7 +12,7 @@ Data Sources (free, Python-only)         LLM Analysis              Output
 Google News RSS (41 queries)     ──┐    Quant pre-score
 SEC 8-K (item-level parsing)     ──┤    Haiku: tie-break         Rankings
 SEC 13F (6 major funds)          ──┤──▶ Gemini: analyze          ──▶ Buy/Sell signals
-SEC Form 4 (insider trading)     ──┤    Sonnet: fallback         Telegram alerts
+SEC Form 4 (insider trading)     ──┤    Sonnet: fallback         Explosive alerts
 Yahoo Finance (earnings+ratings) ──┤                              ASCR-H trigger
 Reddit (WSB/stocks/investing)    ──┤
 Price events (surge/crash/vol)   ──┘
@@ -27,6 +27,7 @@ Continuous monitoring during market hours (9:00 AM - 4:30 PM ET):
 - Hash-based dedup — only calls LLM on genuinely new items
 - Quant headline scoring keeps material events first and filters low-value topical news before deep analysis
 - Immediately triggers ASCR-H on actionable events
+- Sends Telegram event pushes only for high-impact explosive events; routine actionable events stay logged for ranking and ASCR-H
 - Cost: ~$0.03/cycle max (most cycles are free — nothing new)
 
 ## Modules
@@ -44,10 +45,11 @@ Continuous monitoring during market hours (9:00 AM - 4:30 PM ET):
 
 ## Scoring Engine
 
-ASCR v1.9 keeps the validated scoring stack, the quant-style news router,
-and adds a watch-only frontier radar for earlier domain discovery:
+ASCR v2.0 keeps the validated scoring stack, the quant-style news router,
+and adds a patient execution policy plus high-impact alert gating:
 
-- base dimensions: evidence, asymmetry, momentum, risk
+- base dimensions: evidence, asymmetry, price confirmation, risk
+- momentum/price trend is retained as a diagnostic, not a live opportunity-score contributor
 - event alpha: time-decayed, source-weighted public events with confidence, verdict, conviction, and priced-in adjustment
 - valuation overlay: bounded sanity check using P/S, EV/Sales, EV/EBITDA, and price/free-cash-flow; P/E is deliberately weak because ASCR targets high-risk re-rating candidates
 - business-quality overlay: bounded filter for margins, cash generation, ROE, leverage, and growth quality
@@ -62,13 +64,15 @@ and adds a watch-only frontier radar for earlier domain discovery:
 - frontier domain discovery tracks AI infrastructure, humanoid robotics, robotics automation, commercial space, quantum computing, and frontier energy
 - chokepoint scoring ranks watch-only bottleneck candidates by scarcity, dependency, concentration, validation, timing, and crowding risk
 - thesis receipts preserve original discovery logic and later price outcomes for accountability
+- portfolio instructions favor longer holds: trailing stops activate only after meaningful gains, fresh profitable positions are protected from rotation, and routine weak signals get grace before sell
+- active Telegram event alerts are capped to explosive items with major source/type/keyword/evidence filters
 
 Current production weights:
 
 ```yaml
-evidence: 0.35
-asymmetry: 0.30
-momentum: 0.25
+evidence: 0.50
+asymmetry: 0.40
+momentum: 0.00  # diagnostic only
 risk: -0.10
 ```
 
@@ -155,6 +159,7 @@ haircut, not a substitute for rerunning with your own assumptions.
 - Minimum `ev_score ≥ 5` required for recommendation
 - Event source/type multipliers are reviewed through `src.scoring_calibration`
   instead of being treated as fixed intuition.
+- Price confirmation can explain context but cannot make an event-thin ticker qualify by itself.
 
 ## Backtest Source Profiles
 

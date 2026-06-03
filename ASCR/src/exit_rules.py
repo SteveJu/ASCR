@@ -132,7 +132,7 @@ def _evaluate_single(pos: dict) -> list:
                 "type": "TRAILING_STOP",
                 "severity": "HIGH",
                 "message": f"Price ${current:.2f} fell {abs(drawdown):.1f}% from peak ${max_price:.2f} (trailing stop: ${trailing_stop_price:.2f})",
-                "action": f"REDUCE — momentum breaking down. Trailing stop ({trailing_pct*100:.0f}%) triggered.",
+                "action": f"REDUCE — price trend breaking down. Trailing stop ({trailing_pct*100:.0f}%) triggered.",
                 "category": "trailing_stop",
             })
 

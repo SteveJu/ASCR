@@ -1,4 +1,4 @@
-# ASCR v1.9 — Public Design Document
+# ASCR v2.0 — Public Design Document
 
 ## 1. Philosophy
 
@@ -43,16 +43,17 @@ Fetch (Python, free)
   contracts, guidance, SEC filings, customer changes, funding/dilution, supply disruption, and major counterparty signals
 - Generic analyst notes, best-stock lists, vague AI hype, syndicated recaps, and generic 13F notices are filtered before deep analysis
 - On actionable event: triggers ASCR-H via subprocess
+- Telegram pushes are reserved for explosive events; routine actionable events are stored and still affect ranking/execution
 - Cost model: fetch is free, dedup is free, LLM only fires on genuinely new events
 
 ## 3. Ranking And Scoring System
 
 ### Scoring
 
-ASCR v1.9 uses the validated scoring stack and adds a separate
-watch-only frontier radar:
+ASCR v2.0 uses the validated scoring stack, keeps frontier discovery, and
+separates price confirmation from event/research conviction:
 
-1. Base factor context: evidence, asymmetry, momentum, risk.
+1. Base factor context: evidence, asymmetry, price confirmation, risk.
 2. Event alpha: fresh structured events adjust evidence/asymmetry/risk using source quality, event type, confidence, verdict, conviction, novelty, decay, and priced-in discount.
 3. Valuation overlay: P/S, EV/Sales, EV/EBITDA, and price/free-cash-flow temper signals where the event looks already priced in. P/E is intentionally weak because ASCR targets high-risk re-rating candidates.
 4. Business-quality overlay: margins, cash generation, ROE, leverage, and growth quality distinguish durable businesses from weak event beneficiaries.
@@ -69,16 +70,16 @@ versus full-universe coverage for prices and scores, flag stale full coverage,
 and treat launchd nonzero last exits as failures instead of silently reporting
 loaded jobs as healthy.
 
-v1.9 adds domain-general discovery for frontier technologies. The new frontier
+v2.0 keeps domain-general discovery for frontier technologies. The frontier
 radar maps domain queries, tracks chokepoint candidates, and records thesis
 receipts, but it does not directly generate buy/sell recommendations.
 
 Current public production weights:
 
 ```yaml
-evidence: 0.35
-asymmetry: 0.30
-momentum: 0.25
+evidence: 0.50
+asymmetry: 0.40
+momentum: 0.00  # diagnostic only
 risk: -0.10
 ```
 
@@ -109,12 +110,12 @@ And conviction maps: HIGH=3, MEDIUM=2, LOW=1
 ## 4. Sell Logic (5 layers)
 
 1. **Hard stop** — P&L below sector-specific threshold (default -20%)
-2. **Trailing stop** — Drop from peak exceeds sector threshold (default -25%)
+2. **Trailing stop** — Activates only after meaningful peak gain, then drops from peak exceed the threshold (default -30%)
 3. **Thesis break** — Negative events + high heat → original thesis invalidated
 4. **Universe pruner** — D-tier history, no events 60d, ratio-aware negative sentiment, delisted
-5. **Smart rotation** — Only sell weakest held if candidate scores >50% better
+5. **Patient rotation** — Only sell aged weak holds when a stronger candidate clears evidence/verdict thresholds
 
-Sector-aware stops: sentiment stocks get tighter stops (-15%/-18%), infrastructure gets looser (-22%/-28%).
+Sector-aware hard stops remain available, while v2.0 widens default trailing behavior so winners can survive normal pullbacks.
 
 ## 5. Supply Chain Graph
 

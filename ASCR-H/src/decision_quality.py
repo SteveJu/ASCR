@@ -70,41 +70,48 @@ def _score_buy(outcome: dict, decision: dict) -> dict:
 def _score_sell(outcome: dict, decision: dict) -> dict:
     """Score a SELL decision."""
     fwd = outcome.get("forward_return", 0) or 0  # return AFTER selling
+    alpha = outcome.get("alpha_return")
+    signal_return = alpha if alpha is not None else fwd
     max_dd = outcome.get("max_drawdown", 0) or 0
     max_gain = outcome.get("max_gain", 0) or 0
 
-    # Avoided drawdown: if stock dropped after sell, good. fwd < 0 → high score
-    avoided_dd_score = _clamp(50 - fwd * 2.5)
+    # Avoided drawdown/opportunity cost is market-adjusted when alpha exists.
+    # In a strong market, a sold stock rising with QQQ is less damning than a
+    # sold stock generating large positive alpha after the exit.
+    avoided_dd_score = _clamp(50 - signal_return * 2.5)
 
-    # Opportunity cost: if stock rallied after sell, bad.
-    if fwd > 0:
-        opp_cost_score = _clamp(100 - fwd * 3)
+    if signal_return > 0:
+        opp_cost_score = _clamp(100 - signal_return * 3)
     else:
-        opp_cost_score = _clamp(80 - fwd)
+        opp_cost_score = _clamp(80 - signal_return)
 
     # Rule consistency: was the sell triggered by a defined rule?
     reason = decision.get("reason", "")
     known_rules = ["hard_stop", "profit_", "trailing_stop", "time_stop", "thesis_broken",
-                   "catalyst_played", "critical_alert"]
+                   "thesis_break", "pruner_", "rotation_for_", "catalyst_played",
+                   "critical_alert", "meltdown"]
     rule_match = any(r in reason.lower() for r in known_rules)
     rule_score = 80 if rule_match else 40
 
     # Thesis accuracy: did the sell reason prove correct?
-    if "stop" in reason.lower() and fwd < -5:
+    if "stop" in reason.lower() and (fwd < -5 or signal_return < -5):
         thesis_score = 90  # correct to stop out
-    elif "profit" in reason.lower() and fwd < 10:
+    elif "profit" in reason.lower() and signal_return < 10:
         thesis_score = 80  # took profit, stock didn't keep running much
-    elif "profit" in reason.lower() and fwd > 20:
+    elif "profit" in reason.lower() and signal_return > 20:
         thesis_score = 30  # took profit too early
-    elif fwd < 0:
+    elif signal_return < 0:
         thesis_score = 80
+    elif alpha is not None and signal_return <= 5:
+        thesis_score = 65
     else:
         thesis_score = 50
 
     dqs = (avoided_dd_score * 0.35 + opp_cost_score * 0.25
            + rule_score * 0.20 + thesis_score * 0.20)
 
-    explanation = (f"PostSellReturn={fwd:+.1f}%→Avoided={avoided_dd_score:.0f}, "
+    alpha_text = f", Alpha={alpha:+.1f}%" if alpha is not None else ""
+    explanation = (f"PostSellReturn={fwd:+.1f}%{alpha_text}→Avoided={avoided_dd_score:.0f}, "
                    f"OppCost→{opp_cost_score:.0f}, Rule={'✓' if rule_match else '✗'}→{rule_score:.0f}, "
                    f"Thesis→{thesis_score:.0f}")
 

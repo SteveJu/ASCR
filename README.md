@@ -1,6 +1,6 @@
 # ASCR: AI Supply Chain Radar
 
-**Version:** v1.9.0 frontier radar and thesis receipts
+**Version:** v2.0.0 event-research scoring and explosive alerts
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](#quick-start)
 [![Status](https://img.shields.io/badge/status-research%20framework-orange)](#current-status)
@@ -68,7 +68,8 @@ ASCR, the brain:
 - routes headlines through a quant-style materiality score before LLM analysis
 - extracts structured events with LLM assistance
 - logs AI API usage and estimated cost
-- scores evidence, asymmetry, momentum, risk, event alpha, valuation sanity checks, business quality, and optional feedback alpha
+- scores evidence, asymmetry, price confirmation, risk, event alpha, valuation sanity checks, business quality, and optional feedback alpha
+- keeps momentum/price trend as a diagnostic rather than a live opportunity-score driver
 - ranks tickers in an AI supply-chain universe
 - outputs buy/sell/hold intent for a paper executor
 
@@ -187,7 +188,7 @@ ASCR_RELEVANT_MAX_PER_RUN=45
 
 ## Frontier Radar Update
 
-ASCR v1.9.0 adds a standalone frontier radar for early discovery in domains that
+ASCR includes a standalone frontier radar for early discovery in domains that
 may become investable before they are obvious in the core AI supply-chain
 universe:
 
@@ -379,12 +380,13 @@ profile falls back to the current baseline. The same calibration path also
 evaluates event-alpha `source_weights` and `event_type_weights`; config changes
 remain manual after review.
 
-The default production weights are pinned to the strict as-of ablation winner:
+The v2.0 production weights are pinned to event/research evidence; price trend
+is retained as a diagnostic context field:
 
 ```yaml
-evidence: 0.35
-asymmetry: 0.30
-momentum: 0.25
+evidence: 0.50
+asymmetry: 0.40
+momentum: 0.00
 risk: -0.10
 ```
 
@@ -417,7 +419,7 @@ See [docs/00-public-release-checklist.md](docs/00-public-release-checklist.md).
 
 ## Current Status
 
-Current public release: v1.9.0
+Current public release: v2.0.0
 
 - sanitized ASCR source tree
 - sanitized ASCR-H source tree
@@ -425,6 +427,8 @@ Current public release: v1.9.0
 - frontier radar for humanoid robotics, robotics automation, commercial space, quantum computing, frontier energy, and AI infrastructure bottlenecks
 - watch-only chokepoint scoring and thesis receipt tracking
 - quant-style event news router with materiality scoring and LLM budget caps
+- explosive-only active event alert gating for Telegram pushes
+- patient portfolio instructions with delayed trailing stops and rotation grace
 - validated scoring engine with calibration and ablation tools
 - calibration stability guard and event-alpha source/type calibration reports
 - Gemini 3.1 Flash Lite default for cost-controlled event analysis

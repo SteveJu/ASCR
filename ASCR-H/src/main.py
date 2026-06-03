@@ -65,7 +65,7 @@ def cmd_init(args):
 
 
 def cmd_run_daily(args):
-    """Daily momentum sprint: check exits, fill slots, log decisions, evaluate, report."""
+    """Daily event-radar execution: check exits, fill slots, log decisions, evaluate, report."""
     from src.event_trader import run_daily as event_run, format_daily_telegram
     from src.outcome_evaluator import evaluate_outcomes
     from src.decision_quality import score_all_pending

@@ -5,7 +5,7 @@ Each sector has:
 2. What signals to watch (bullish + bearish keywords)
 3. Death signals (specific events that end the thesis)
 4. Risk parameters (stop-loss, conviction sensitivity)
-5. Signal type (fundamental vs momentum vs sentiment)
+5. Signal type (fundamental vs price/supply vs sentiment)
 """
 from src.utils import get_logger
 
@@ -264,7 +264,7 @@ def get_sector_strategy(sector: str) -> dict:
         "bullish_signals": [],
         "death_signals": [],
         "stop_loss_pct": -20,
-        "trailing_stop_pct": -25,
+        "trailing_stop_pct": -30,
         "death_signal_action": "watch_then_sell",
         "sensitivity": "normal",
     })

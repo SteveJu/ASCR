@@ -1,8 +1,8 @@
-# AI Momentum Sprint Strategy
+# Event Radar Paper Strategy
 
 ## Objective
 
-Run a $10K paper-traded momentum strategy focused on the AI infrastructure buildout.
+Run a $10K paper-traded execution strategy focused on ASCR's AI infrastructure event and research signals.
 
 This is not a diversified investment strategy. It is a concentrated speculative strategy designed to test whether ASCR's AI infrastructure signals can be converted into a repeatable execution process.
 
@@ -15,11 +15,12 @@ Source of truth: `config.yaml`.
 | Initial bankroll | `$10,000` |
 | Max positions | `10` |
 | Target position size | `10%` of total equity |
-| Minimum momentum | `50` |
+| Minimum event score | `5` |
 | Minimum trade | `$50` |
 | Hard stop | `-20%` from entry |
-| Trailing activation | `+20%` from entry |
-| Trailing stop | `-25%` from peak |
+| Trailing activation | `+30%` peak gain |
+| Trailing stop | `-30%` from peak |
+| Minimum rotation hold | `20` days |
 
 ## Buy Rules
 
@@ -40,16 +41,18 @@ ASCR-H does not locally rank or override Radar's buy list in the production path
 
 ## Sell Rules
 
-Sell logic is price-only.
+ASCR-H does not locally invent sell opinions. It executes ASCR sells after
+the trading-rule validator passes.
 
 1. Hard stop: sell at -20% from entry.
-2. Trailing stop: after +20% gain, sell when price falls 25% from peak.
+2. Trailing stop: after +30% peak gain, sell when price falls roughly 30% from peak.
+3. Rotation: only ASCR can rotate, and only after the held thesis has had time to work.
 
 Explicitly not part of the live sell strategy:
 
 - No profit taking at +25%, +50%, or +100%.
 - No time stop.
-- No sell just because momentum score dropped.
+- No sell just because a score dropped.
 - No sell just because rank dropped.
 - No averaging down.
 

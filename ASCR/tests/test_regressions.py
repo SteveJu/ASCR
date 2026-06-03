@@ -256,7 +256,43 @@ def test_portfolio_instructions_full_book_rotation_does_not_name_error():
 
     old_rankings = recommender.get_rankings
     old_bubble = bubble_detector.check_bubble_burst
+    try:
+        bubble_detector.check_bubble_burst = lambda **kwargs: {
+            "level": "NORMAL",
+            "action": "none",
+            "stats": {},
+        }
+        recommender.get_rankings = lambda **kwargs: [
+            {"ticker": "NEW", "ev_score": 15, "verdict_score": 10, "top_summary": "better"},
+            {"ticker": "OLD", "ev_score": 6, "verdict_score": 1, "top_summary": "held"},
+        ]
+
+        result = recommender.get_portfolio_instructions(
+            {
+                "OLD": {
+                    "avg_entry_price": 100,
+                    "peak_price": 100,
+                    "current_price": 100,
+                    "entry_date": "2026-01-01",
+                }
+            },
+            max_pos=1,
+        )
+    finally:
+        recommender.get_rankings = old_rankings
+        bubble_detector.check_bubble_burst = old_bubble
+
+    assert result["sells"][0]["ticker"] == "OLD"
+    assert result["buys"][0]["ticker"] == "NEW"
+
+
+def test_portfolio_instructions_protects_fresh_profitable_hold_from_rotation():
+    from src import recommender
+    import src.bubble_detector as bubble_detector
+
+    old_rankings = recommender.get_rankings
     old_sell_signals = recommender.check_sell_signals
+    old_bubble = bubble_detector.check_bubble_burst
     try:
         bubble_detector.check_bubble_burst = lambda **kwargs: {
             "level": "NORMAL",
@@ -266,25 +302,74 @@ def test_portfolio_instructions_full_book_rotation_does_not_name_error():
         recommender.check_sell_signals = lambda ticker: {
             "should_sell": False,
             "reason": "",
-            "total_neg_ev": 0,
-            "total_risk": 0,
+            "neg_ev": 0,
+            "risk": 0,
         }
         recommender.get_rankings = lambda **kwargs: [
-            {"ticker": "NEW", "ev_score": 8, "verdict_score": 10, "top_summary": "better"},
+            {"ticker": "NEW", "ev_score": 20, "verdict_score": 10, "top_summary": "strong"},
             {"ticker": "OLD", "ev_score": 6, "verdict_score": 1, "top_summary": "held"},
         ]
 
         result = recommender.get_portfolio_instructions(
-            {"OLD": {"avg_entry_price": 100, "peak_price": 100, "current_price": 100}},
+            {
+                "OLD": {
+                    "avg_entry_price": 100,
+                    "peak_price": 120,
+                    "current_price": 110,
+                    "entry_date": datetime.now().strftime("%Y-%m-%d"),
+                }
+            },
             max_pos=1,
         )
     finally:
         recommender.get_rankings = old_rankings
-        bubble_detector.check_bubble_burst = old_bubble
         recommender.check_sell_signals = old_sell_signals
+        bubble_detector.check_bubble_burst = old_bubble
 
-    assert result["sells"][0]["ticker"] == "OLD"
-    assert result["buys"][0]["ticker"] == "NEW"
+    assert result["sells"] == []
+    assert result["buys"] == []
+
+
+def test_portfolio_instructions_requires_trailing_activation():
+    from src import recommender
+    import src.bubble_detector as bubble_detector
+
+    old_rankings = recommender.get_rankings
+    old_sell_signals = recommender.check_sell_signals
+    old_bubble = bubble_detector.check_bubble_burst
+    try:
+        bubble_detector.check_bubble_burst = lambda **kwargs: {
+            "level": "NORMAL",
+            "action": "none",
+            "stats": {},
+        }
+        recommender.check_sell_signals = lambda ticker: {
+            "should_sell": False,
+            "reason": "",
+            "neg_ev": 0,
+            "risk": 0,
+        }
+        recommender.get_rankings = lambda **kwargs: [
+            {"ticker": "OLD", "ev_score": 6, "verdict_score": 1, "top_summary": "held"},
+        ]
+
+        result = recommender.get_portfolio_instructions(
+            {
+                "OLD": {
+                    "avg_entry_price": 100,
+                    "peak_price": 120,
+                    "current_price": 89,
+                    "entry_date": "2026-01-01",
+                }
+            },
+            max_pos=1,
+        )
+    finally:
+        recommender.get_rankings = old_rankings
+        recommender.check_sell_signals = old_sell_signals
+        bubble_detector.check_bubble_burst = old_bubble
+
+    assert result["sells"] == []
 
 
 def test_db_and_event_pipeline_share_compatible_events_schema():
@@ -324,5 +409,7 @@ if __name__ == "__main__":
     test_healthcheck_parse_launchctl_list_exact_labels()
     test_event_pipeline_init_creates_query_indexes()
     test_portfolio_instructions_full_book_rotation_does_not_name_error()
+    test_portfolio_instructions_protects_fresh_profitable_hold_from_rotation()
+    test_portfolio_instructions_requires_trailing_activation()
     test_db_and_event_pipeline_share_compatible_events_schema()
     print("Regression tests passed")

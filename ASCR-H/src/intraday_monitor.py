@@ -2,7 +2,7 @@
 
 Runs mid-day (12:30 PM) to check:
 - Approaching hard stop (-15% warning, -20% trigger)
-- Approaching trailing stop (-20% from peak warning, -25% trigger)
+- Approaching trailing stop after activation (+30% peak gain, -30% from peak)
 - Big intraday moves (>5%)
 - Update peak prices in DB
 
@@ -52,7 +52,8 @@ def run_intraday_check() -> dict:
 
     cfg = config.load()
     hard_stop = cfg.get("sell", {}).get("hard_stop_pct", -20)
-    trailing_pct = cfg.get("sell", {}).get("trailing_stop_from_peak_pct", -25)
+    trailing_activation = cfg.get("sell", {}).get("trailing_stop_activation_pct", 30)
+    trailing_pct = cfg.get("sell", {}).get("trailing_stop_from_peak_pct", -30)
 
     positions = db.get_all_positions("open")
     if not positions:
@@ -81,6 +82,8 @@ def run_intraday_check() -> dict:
 
         pnl_pct = (price - entry) / entry * 100
         drop_from_peak = (price - peak) / peak * 100 if peak > 0 else 0
+        peak_pnl_pct = (peak - entry) / entry * 100 if entry > 0 else 0
+        trailing_active = peak_pnl_pct >= trailing_activation
 
         # Hard stop zone: warn at 75% of trigger
         warn_hard = hard_stop * 0.75  # -15% for -20% stop
@@ -103,23 +106,25 @@ def run_intraday_check() -> dict:
                        f"   {qty:.2f} shares | P&L ${pnl_dollar:+,.0f}",
             })
         # Trailing stop zone
-        elif drop_from_peak <= trailing_pct:
+        elif trailing_active and drop_from_peak <= trailing_pct:
             qty = pos.get("quantity", 0)
             pnl_dollar = (price - entry) * qty
             alerts.append({
                 "level": "CRITICAL",
                 "msg": f"🚨 <b>{ticker}</b> {drop_from_peak:.0f}% from peak - trailing stop triggered\n"
                        f"   entry ${entry:.2f} → peak ${peak:.2f} → ${price:.2f}\n"
-                       f"   {qty:.2f} shares | P&L ${pnl_dollar:+,.0f} | total P&L {pnl_pct:+.1f}%",
+                       f"   peak gain {peak_pnl_pct:+.1f}% | {qty:.2f} shares | "
+                       f"P&L ${pnl_dollar:+,.0f} | total P&L {pnl_pct:+.1f}%",
             })
-        elif drop_from_peak <= trailing_pct * 0.8:  # -20% for -25% trailing
+        elif trailing_active and drop_from_peak <= trailing_pct * 0.8:
             qty = pos.get("quantity", 0)
             pnl_dollar = (price - entry) * qty
             alerts.append({
                 "level": "WARNING",
                 "msg": f"🟡 <b>{ticker}</b> {drop_from_peak:.0f}% from peak - near {trailing_pct}% trailing stop\n"
                        f"   entry ${entry:.2f} → peak ${peak:.2f} → ${price:.2f}\n"
-                       f"   {qty:.2f} shares | P&L ${pnl_dollar:+,.0f} | total P&L {pnl_pct:+.1f}%",
+                       f"   peak gain {peak_pnl_pct:+.1f}% | {qty:.2f} shares | "
+                       f"P&L ${pnl_dollar:+,.0f} | total P&L {pnl_pct:+.1f}%",
             })
         # Big move alert
         elif abs(pnl_pct) >= 5:
@@ -208,6 +213,7 @@ def run_intraday_trades() -> dict:
                 "quantity": pos["quantity"],
                 "avg_entry_price": pos["avg_entry_price"],
                 "peak_price": pos.get("max_price_since_entry") or pos["avg_entry_price"],
+                "entry_date": pos.get("entry_date", ""),
                 "current_price": price,
             }
 

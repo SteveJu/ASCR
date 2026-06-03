@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.0.0 - Event Research Scoring And Explosive Alerts
+
+- Removed live momentum contribution from opportunity scoring; price trend remains available as diagnostic price confirmation
+- Raised event/research weights to make evidence, asymmetry, verdict, and event alpha the primary recommendation drivers
+- Added patient portfolio policy: delayed trailing-stop activation, wider default trailing bands, thesis-break grace, and rotation only for aged weak holds versus stronger fresh candidates
+- Added explosive event alert gating so Telegram pushes focus on high-impact SEC, earnings, contract, guidance, bankruptcy, fraud, and major-magnitude events
+- Kept routine actionable events in SQLite and ASCR-H execution flow while suppressing noisy push alerts
+- Updated ASCR-H public executor defaults to event-radar execution, +30% trailing activation, -30% trailing stop, 20-day rotation hold, and alpha-aware sell DQS
+- Updated public docs, config examples, and tests for v2.0 behavior
+
+Validation:
+
+- ASCR tests: 80 passed
+- ASCR-H tests: 26 passed
+- Python source compile checks passed
+- Public safety scan found no private token, private path, or private repo name in tracked public source/docs
+
 ## v1.9.0 - Frontier Radar And Thesis Receipts
 
 - Added a watch-only frontier radar for AI infrastructure, humanoid robotics, robotics automation, commercial space, quantum computing, and frontier energy

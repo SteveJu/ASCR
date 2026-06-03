@@ -1,11 +1,82 @@
 # Scoring weights and thresholds
-# V3: strict as-of ablation selected calibrated_weights.
-# Validation: IC +0.0055, top5 spread +1.1983 vs baseline, 4/4 folds not worse.
+# V4: event/research anchored. Price momentum remains a stored diagnostic
+# dimension for reports/backtests, but it no longer contributes to live
+# opportunity_score.
 opportunity_weights:
-  evidence: 0.35
-  asymmetry: 0.30
-  momentum: 0.25
+  evidence: 0.50
+  asymmetry: 0.40
+  momentum: 0.00
   risk: -0.10
+
+# Portfolio-level holding policy.
+# This keeps live execution patient enough for high-beta AI winners while still
+# allowing urgent exits when price risk or thesis-break evidence is severe.
+portfolio_policy:
+  min_hold_days_before_thesis_sell: 10
+  trailing_activation_pct: 30
+  default_trailing_stop_pct: -30
+  trailing_min_hold_days: 10
+  trailing_winner_widen_pct: 5
+  rotation:
+    enabled: true
+    min_hold_days: 20
+    protect_profitable_days: 30
+    candidate_min_event_score: 12
+    candidate_min_verdict_score: 6
+    min_score_ratio: 2.0
+    min_score_gap: 4.0
+
+# Telegram event alert policy.
+# Routine actionable events stay in the DB and scoring pipeline. Active pushes
+# are reserved for unusually material news so Telegram is not flooded.
+alert_policy:
+  enabled: true
+  min_alert_score: 18
+  max_events_per_push: 3
+  min_confidence: 0.75
+  min_abs_evidence_delta: 8
+  max_priced_in_pct: 65
+  suppress_sources: ["price"]
+  high_impact_sources: ["sec", "sec_8k", "sec_filing", "earnings"]
+  high_impact_event_types:
+    - major_contract
+    - contract
+    - guidance_raise
+    - guidance_lower
+    - earnings_beat
+    - earnings_miss
+    - dilution
+    - financing
+    - fraud_concern
+    - regulation
+    - insider_buy
+    - acquisition
+    - bankruptcy
+    - delisting
+  explosive_keywords:
+    - billion
+    - multi-billion
+    - material definitive agreement
+    - signed contract
+    - supply agreement
+    - purchase agreement
+    - acquisition
+    - acquire
+    - merger
+    - guidance raise
+    - guidance cut
+    - raises guidance
+    - lowers guidance
+    - sec investigation
+    - doj investigation
+    - short report
+    - fraud
+    - bankruptcy
+    - delist
+    - halt
+    - nvidia invests
+    - nvidia partnership
+    - hyperscaler contract
 
 # Event alpha turns structured public events into decayed score adjustments.
 # This is the project-specific signal layer: filings, contracts, supply-chain
@@ -93,19 +164,19 @@ feedback_alpha:
 # scoring overrides should be re-enabled only after separate as-of validation.
 regime_weights:
   risk_on:
-    evidence: 0.35
-    asymmetry: 0.30
-    momentum: 0.25
+    evidence: 0.50
+    asymmetry: 0.40
+    momentum: 0.00
     risk: -0.10
   neutral:
-    evidence: 0.35
-    asymmetry: 0.30
-    momentum: 0.25
+    evidence: 0.50
+    asymmetry: 0.40
+    momentum: 0.00
     risk: -0.10
   risk_off:
-    evidence: 0.35
-    asymmetry: 0.30
-    momentum: 0.25
+    evidence: 0.50
+    asymmetry: 0.40
+    momentum: 0.00
     risk: -0.10
 
 # Rating thresholds (Opportunity Score)
@@ -135,7 +206,9 @@ asymmetry:
   ai_revenue_pct_low: 20
   forward_pe_discount: 30
 
-# Momentum Score components
+# Price-confirmation diagnostic components.
+# Stored as momentum_score for schema compatibility; not used in live
+# opportunity_score while the momentum weight is 0.
 momentum:
   relative_strength_period_days: 20
   volume_surge_multiplier: 2.0

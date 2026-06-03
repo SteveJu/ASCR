@@ -242,10 +242,17 @@ def add_order(date, ticker, side, quantity, price, reason="", signal_id="", rati
 
 def get_orders(ticker=None, days=30):
     with get_conn() as conn:
+        cutoff = time.strftime("%Y-%m-%d", time.localtime(time.time() - days * 86400))
         if ticker:
-            rows = conn.execute("SELECT * FROM paper_orders WHERE ticker=? ORDER BY date DESC", (ticker,)).fetchall()
+            rows = conn.execute(
+                "SELECT * FROM paper_orders WHERE ticker=? AND date>=? ORDER BY date DESC",
+                (ticker, cutoff),
+            ).fetchall()
         else:
-            rows = conn.execute("SELECT * FROM paper_orders ORDER BY date DESC LIMIT 200").fetchall()
+            rows = conn.execute(
+                "SELECT * FROM paper_orders WHERE date>=? ORDER BY date DESC LIMIT 200",
+                (cutoff,),
+            ).fetchall()
     return [dict(r) for r in rows]
 
 # --- Positions ---

@@ -207,27 +207,30 @@ def _trigger_ascr_h(new_events: list):
     # Alert on Telegram (English + Chinese)
     try:
         from src.telegram_notifier import send
+        from src.event_alerts import filter_explosive_events
 
-        # Build English version
-        en_lines = ["⚡ <b>Real-Time Event Alert</b>\n"]
-        cn_items = []
-        for ev in new_events[:5]:
-            verdict = ev.get("verdict", "")
-            ticker = ev.get("ticker", "?")
-            headline = ev.get("headline", "")
-            evidence = ev.get("evidence_delta", 0)
-            conviction = ev.get("conviction", "")
-            thesis = ev.get("investment_thesis", "") or ev.get("summary", "")
-            en_lines.append(f"<b>{ticker}</b> [{verdict}|{conviction}] ev={evidence}")
-            en_lines.append(f"  {headline}")
-            if thesis:
-                en_lines.append(f"  -> {thesis}")
-            en_lines.append("")
-            cn_items.append({"ticker": ticker, "verdict": verdict, "conviction": conviction,
-                             "evidence": evidence, "headline": headline, "thesis": thesis})
-        if len(new_events) > 5:
-            en_lines.append(f"...+{len(new_events)-5} more")
-        send("\n".join(en_lines))
+        alert_events = filter_explosive_events(new_events)
+        if not alert_events:
+            logger.info(f"Telegram real-time alert skipped: 0/{len(new_events)} explosive events")
+        else:
+            en_lines = ["💥 <b>Real-Time Explosive Event</b>\n"]
+            for ev in alert_events:
+                verdict = ev.get("verdict", "")
+                ticker = ev.get("ticker", "?")
+                headline = ev.get("headline", "")
+                evidence = ev.get("evidence_delta", 0)
+                conviction = ev.get("conviction", "")
+                thesis = ev.get("investment_thesis", "") or ev.get("summary", "")
+                alert_score = ev.get("_alert_score", 0)
+                en_lines.append(
+                    f"<b>{ticker}</b> [{verdict}|{conviction}] "
+                    f"ev={evidence:+.0f} alert={alert_score:.0f}"
+                )
+                en_lines.append(f"  {headline}")
+                if thesis:
+                    en_lines.append(f"  -> {thesis}")
+                en_lines.append("")
+            send("\n".join(en_lines))
 
 
     except Exception as e:

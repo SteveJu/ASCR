@@ -147,7 +147,7 @@ def cmd_explain(args):
     print(f"\n📊 ${ticker} — Rating: {latest['rating']} | Opp: {latest['opportunity_score']:.1f}")
     print(f"  Evidence:  {latest['evidence_score']:.0f}/100")
     print(f"  Asymmetry: {latest['asymmetry_score']:.0f}/100")
-    print(f"  Momentum:  {latest['momentum_score']:.0f}/100")
+    print(f"  PriceConf: {latest['momentum_score']:.0f}/100")
     print(f"  Risk:      {latest['risk_score']:.0f}/100")
     print(f"  Priority:  {latest.get('tracking_priority', 'N/A')}")
     print(f"  Reason:    {latest.get('reason', 'N/A')}")

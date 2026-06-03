@@ -1,8 +1,8 @@
-# ASCR-H v1.7
+# ASCR-H v2.0
 
 Paper trading executor for validating ASCR signals. ASCR-H is the hands; ASCR is the brain.
 
-v1.7 adds quote-aware position status reporting on top of the v1.6 dynamic US equity market holiday hardening.
+v2.0 aligns the public executor with ASCR's event/research scoring: patient holding, delayed trailing stops, and alpha-aware sell evaluation.
 
 The production path is intentionally simple:
 
@@ -62,11 +62,12 @@ Configured in `config.yaml`.
 | Target per position | `10%` of total equity |
 | Minimum trade | `$50` |
 | Hard stop | `-20%` from entry |
-| Trailing activation | `+20%` from entry |
-| Trailing stop | `-25%` from peak |
+| Trailing activation | `+30%` peak gain |
+| Trailing stop | `-30%` from peak |
+| Minimum rotation hold | `20` days |
 | Daily turnover cap | `30%` of portfolio value |
 
-Sell logic is price-only in the live strategy: no profit taking, no time stop, no sell because rank or momentum dropped.
+ASCR-H does not create local sell opinions. It executes ASCR sells, with no local profit taking, no time stop, and no sell just because rank or score dropped.
 
 ## Trading Rules
 

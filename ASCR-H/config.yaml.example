@@ -1,3 +1,5 @@
+# ASCR-H v2.0 — public paper executor for ASCR event/research instructions.
+# Philosophy: ASCR is the signal brain; ASCR-H is the execution hand.
 initial_cash: 10000
 
 sizing:
@@ -6,13 +8,14 @@ sizing:
 
 buy:
   signal: ascr_instructions
-  min_momentum: 50
+  min_event_score: 5
   rotation: true
 
 sell:
   hard_stop_pct: -20
-  trailing_stop_activation_pct: 20
-  trailing_stop_from_peak_pct: -25
+  trailing_stop_activation_pct: 30
+  trailing_stop_from_peak_pct: -30
+  min_hold_days_before_rotation: 20
 
 ascr:
   db_path: "../ASCR/data/ascr.sqlite"

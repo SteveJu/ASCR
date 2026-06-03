@@ -1,4 +1,4 @@
-"""Scoring engine V2 — Evidence, Asymmetry, Momentum, Risk + rating + tracking_priority."""
+"""Scoring engine V2 — Evidence, Asymmetry, price confirmation, Risk + rating."""
 import json
 import math
 from datetime import datetime
@@ -749,7 +749,7 @@ def compute_scores(tickers: list = None):
                 provisional_opp = (
                     evidence * weights.get("evidence", 0.35) +
                     asymmetry * weights.get("asymmetry", 0.35) +
-                    momentum * weights.get("momentum", 0.15) +
+                    momentum * weights.get("momentum", 0.0) +
                     risk * weights.get("risk", -0.15)
                 )
                 provisional_rating = compute_rating(provisional_opp, evidence, asymmetry, risk, momentum)
@@ -764,7 +764,7 @@ def compute_scores(tickers: list = None):
             opp = (
                 evidence * weights.get("evidence", 0.35) +
                 asymmetry * weights.get("asymmetry", 0.35) +
-                momentum * weights.get("momentum", 0.15) +
+                momentum * weights.get("momentum", 0.0) +
                 risk * weights.get("risk", -0.15)
             )
 
@@ -835,8 +835,6 @@ def _build_reason(rating, evidence, asymmetry, momentum, risk, info,
         parts.append("moderate evidence")
     if asymmetry >= 60:
         parts.append("high asymmetry")
-    if momentum >= 60:
-        parts.append("strong momentum")
     if risk >= 30:
         parts.append(f"elevated risk ({risk})")
 

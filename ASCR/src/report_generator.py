@@ -45,7 +45,7 @@ def generate_daily_report(scores: list, exit_signals: list = None, positions: li
         lines.append("## 🔴 S-Tier — Small Position Probe NOW\n")
         for s in s_tier:
             lines.append(f"### ${s['ticker']} — {s.get('name', '')} (Opp: {s['opportunity']:.1f})")
-            lines.append(f"- Evidence: {s['evidence']:.0f} | Asymmetry: {s['asymmetry']:.0f} | Momentum: {s['momentum']:.0f} | Risk: {s['risk']:.0f}")
+            lines.append(f"- Evidence: {s['evidence']:.0f} | Asymmetry: {s['asymmetry']:.0f} | PriceConf: {s['momentum']:.0f} | Risk: {s['risk']:.0f}")
             lines.append(f"- Tracking: **{s.get('tracking_priority', 'High')}**")
             lines.append(f"- Reason: {s.get('reason', '')}")
             lines.append(f"- Next trigger: {s.get('next_trigger', '')}")

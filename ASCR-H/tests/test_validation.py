@@ -46,6 +46,23 @@ def test_decision_quality_sell():
     print(f"✅ SELL DQS: good={good['quality_score']:.1f}, bad={bad['quality_score']:.1f}")
 
 
+def test_decision_quality_sell_uses_alpha_when_available():
+    """SELL DQS should judge early exits by alpha when a hot market lifts everything."""
+    from src.decision_quality import _score_sell
+
+    market_beta_rally = _score_sell(
+        {"forward_return": 22, "alpha_return": 2, "max_drawdown": -3, "max_gain": 24},
+        {"reason": "rotation_for_stronger_event"}
+    )
+    missed_alpha = _score_sell(
+        {"forward_return": 22, "alpha_return": 18, "max_drawdown": -3, "max_gain": 24},
+        {"reason": "rotation_for_stronger_event"}
+    )
+
+    assert market_beta_rally["quality_score"] > missed_alpha["quality_score"]
+    assert "Alpha=+2.0%" in market_beta_rally["explanation"]
+
+
 def test_decision_quality_trim():
     """TRIM: similar to SELL but softer penalty for missed upside."""
     from src.decision_quality import _score_sell, _score_trim
@@ -174,6 +191,7 @@ def test_missed_opportunity_definition():
 if __name__ == "__main__":
     test_decision_quality_buy()
     test_decision_quality_sell()
+    test_decision_quality_sell_uses_alpha_when_available()
     test_decision_quality_trim()
     test_decision_quality_hold()
     test_decision_quality_no_buy()
@@ -182,5 +200,5 @@ if __name__ == "__main__":
     test_false_positive_definition()
     test_missed_opportunity_definition()
     print(f"\n{'='*50}")
-    print("All 9 tests passed! ✅")
+    print("All 10 tests passed! ✅")
     print(f"{'='*50}")

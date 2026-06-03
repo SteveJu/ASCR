@@ -17,6 +17,7 @@ import requests
 from datetime import datetime, timedelta
 from urllib.parse import quote
 from src import config, db
+from src.event_alerts import headline_is_explosive
 from src.telegram_notifier import send
 from src.utils import get_logger
 
@@ -79,9 +80,11 @@ def scan_8k_urgent():
     tickers = list(TICKER_CIK.keys())
     filings = fetch_sec_filings(tickers, days=1)
 
-    # Only care about material items
+    # Only care about truly explosive material items. 7.01 FD disclosures are
+    # often interesting but too noisy for active push alerts.
+    explosive_items = {"1.01", "1.03", "2.01", "3.01", "4.02"}
     urgent = [f for f in filings if any(
-        it in ("1.01", "2.01", "7.01") for it in f.get("important_items", [])
+        it in explosive_items for it in f.get("important_items", [])
     )]
 
     # Dedup against already-processed
@@ -127,12 +130,14 @@ def run_fast_scan():
     urgent_filings = scan_8k_urgent()
     if urgent_filings:
         lines = [f"🚨 <b>Intraday 8-K Alerts ({len(urgent_filings)})</b>\n"]
-        for f in urgent_filings:
+        for f in urgent_filings[:3]:
             summary = summarize_8k_items(f.get("item_descriptions", ""), f["ticker"])
             lines.append(f"📋 <b>{f['ticker']}</b> — {summary}")
             lines.append(f"   {f['item_descriptions']}")
             lines.append(f"   Filed: {f['date']} | <a href=\"{f.get('url','')}\">view</a>")
             lines.append("")
+        if len(urgent_filings) > 3:
+            lines.append(f"...+{len(urgent_filings) - 3} more 8-Ks logged but not pushed")
         send("\n".join(lines))
         logger.info(f"Sent {len(urgent_filings)} urgent 8-K alerts")
 
@@ -140,19 +145,15 @@ def run_fast_scan():
     breaking = scan_breaking_news()
     logger.info(f"Breaking news: {len(breaking)} articles scanned")
 
-    # If very high-signal keywords appear, alert
-    hot_keywords = ["billion deal", "signed contract", "strategic investment",
-                    "NVIDIA invest", "NVIDIA partner", "acquisition"]
-    hot_news = []
-    for a in breaking:
-        title_lower = a["title"].lower()
-        if any(kw in title_lower for kw in hot_keywords):
-            hot_news.append(a)
+    # If explosive keywords appear, alert.
+    hot_news = [a for a in breaking if headline_is_explosive(a.get("title", ""))]
 
     if hot_news:
         lines = [f"🔥 <b>Intraday Hot News ({len(hot_news)})</b>\n"]
-        for n in hot_news[:5]:
+        for n in hot_news[:3]:
             lines.append(f"  📰 {n['title']}")
+        if len(hot_news) > 3:
+            lines.append(f"...+{len(hot_news) - 3} more logged but not pushed")
         send("\n".join(lines))
         logger.info(f"Sent {len(hot_news)} breaking news alerts")
 
