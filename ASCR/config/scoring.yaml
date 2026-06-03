@@ -19,12 +19,18 @@ portfolio_policy:
   trailing_winner_widen_pct: 5
   rotation:
     enabled: true
-    min_hold_days: 20
+    min_hold_days: 90
     protect_profitable_days: 30
     candidate_min_event_score: 12
     candidate_min_verdict_score: 6
     min_score_ratio: 2.0
     min_score_gap: 4.0
+  add_capital:
+    enabled: true
+    min_event_score: 8
+    min_verdict_score: 6
+    max_suggestions: 3
+    suggested_position_pct: 0.10
 
 # Telegram event alert policy.
 # Routine actionable events stay in the DB and scoring pipeline. Active pushes

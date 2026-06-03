@@ -217,7 +217,13 @@ def run_intraday_trades() -> dict:
                 "current_price": price,
             }
 
-        instructions = recommender.get_portfolio_instructions(current, max_pos=max_pos)
+        instructions = recommender.get_portfolio_instructions(
+            current,
+            max_pos=max_pos,
+            cash_available=cash,
+            portfolio_value=total_equity,
+            target_position_pct=pos_pct,
+        )
     except Exception as e:
         logger.error(f"Radar unavailable for intraday: {e}")
         return {"error": str(e)}

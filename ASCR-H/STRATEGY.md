@@ -20,7 +20,7 @@ Source of truth: `config.yaml`.
 | Hard stop | `-20%` from entry |
 | Trailing activation | `+30%` peak gain |
 | Trailing stop | `-30%` from peak |
-| Minimum rotation hold | `20` days |
+| Minimum rotation hold | `90` days |
 
 ## Buy Rules
 

@@ -64,7 +64,7 @@ Configured in `config.yaml`.
 | Hard stop | `-20%` from entry |
 | Trailing activation | `+30%` peak gain |
 | Trailing stop | `-30%` from peak |
-| Minimum rotation hold | `20` days |
+| Minimum rotation hold | `90` days |
 | Daily turnover cap | `30%` of portfolio value |
 
 ASCR-H does not create local sell opinions. It executes ASCR sells, with no local profit taking, no time stop, and no sell just because rank or score dropped.

@@ -56,7 +56,9 @@ def test_portfolio_instructions_contract_for_executor():
         recommender.check_sell_signals = old_sell_signals
         bubble_detector.check_bubble_burst = old_bubble
 
-    assert set(result) == {"sells", "buys", "holds", "rankings", "bubble"}
+    assert set(result) == {
+        "sells", "buys", "holds", "add_capital_suggestions", "rankings", "bubble",
+    }
     assert result["sells"] == []
     assert result["buys"][0]["ticker"] == "MU"
     assert result["buys"][0]["reason"].startswith("rank#1_ev")
@@ -65,6 +67,7 @@ def test_portfolio_instructions_contract_for_executor():
     assert "thesis" in result["buys"][0]
     assert "shares" not in result["buys"][0]
     assert "order_type" not in result["buys"][0]
+    assert isinstance(result["add_capital_suggestions"], list)
     assert result["holds"][0]["ticker"] == "OLD"
 
 
@@ -94,6 +97,7 @@ def test_meltdown_contract_sells_everything_and_buys_nothing():
     assert all(s["urgency"] == "critical" for s in result["sells"])
     assert result["buys"] == []
     assert result["holds"] == []
+    assert result["add_capital_suggestions"] == []
     assert result["rankings"] == []
 
 

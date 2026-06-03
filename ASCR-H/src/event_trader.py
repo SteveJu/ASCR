@@ -248,6 +248,9 @@ def run_daily() -> dict:
         instructions = get_portfolio_instructions(
             current_positions=current,
             max_pos=max_pos,
+            cash_available=cash,
+            portfolio_value=total_equity,
+            target_position_pct=pos_pct,
         )
     except (TimeoutError, FileNotFoundError, ImportError, Exception) as e:
         logger.error(f"Radar unavailable: {e}")
@@ -391,6 +394,13 @@ def run_daily() -> dict:
 
     # (alerts handled inline during buy execution)
 
+    for idea in instructions.get("add_capital_suggestions", []):
+        alog("trader", "add_capital_suggestion", idea["ticker"],
+             suggested_cash=idea.get("suggested_cash", 0),
+             ev_score=idea.get("ev_score", 0),
+             verdict_score=idea.get("verdict_score", 0),
+             reason=idea.get("reason", ""))
+
     # === LOG HOLDS ===
     for hold in instructions["holds"]:
         alog("trader", "hold", hold["ticker"], note=hold["note"])
@@ -465,5 +475,19 @@ def format_daily_telegram(result: dict) -> str:
             pnl = p.get("pnl_pct", 0)
             icon = "🟢" if pnl >= 0 else "🔴"
             lines.append("  {} {}: {:+.1f}%".format(icon, t, pnl))
+
+    ideas = result.get("instructions", {}).get("add_capital_suggestions", [])
+    if ideas:
+        lines.append("")
+        lines.append("💵 <b>Add-Capital Candidates</b>")
+        for idea in ideas[:3]:
+            lines.append(
+                "  {}: add ~${:,.0f} | ev={:.0f} verdict={:.1f}".format(
+                    idea["ticker"],
+                    idea.get("suggested_cash", 0),
+                    idea.get("ev_score", 0),
+                    idea.get("verdict_score", 0),
+                )
+            )
 
     return "\n".join(lines)

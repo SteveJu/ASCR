@@ -7,13 +7,15 @@
 - Added patient portfolio policy: delayed trailing-stop activation, wider default trailing bands, thesis-break grace, and rotation only for aged weak holds versus stronger fresh candidates
 - Added explosive event alert gating so Telegram pushes focus on high-impact SEC, earnings, contract, guidance, bankruptcy, fraud, and major-magnitude events
 - Kept routine actionable events in SQLite and ASCR-H execution flow while suppressing noisy push alerts
-- Updated ASCR-H public executor defaults to event-radar execution, +30% trailing activation, -30% trailing stop, 20-day rotation hold, and alpha-aware sell DQS
+- Updated ASCR-H public executor defaults to event-radar execution, +30% trailing activation, -30% trailing stop, 90-day rotation hold, and alpha-aware sell DQS
+- Added add-capital candidate suggestions for full-book high-conviction opportunities without auto-trading extra capital
 - Updated public docs, config examples, and tests for v2.0 behavior
 
 Validation:
 
 - ASCR tests: 80 passed
 - ASCR-H tests: 26 passed
+- Live replay add-capital shadow validation: 10 ideas, average +133.2%, median +63.0%, 90.0% win rate over 2025-06-03 to 2026-05-29
 - Python source compile checks passed
 - Public safety scan found no private token, private path, or private repo name in tracked public source/docs
 

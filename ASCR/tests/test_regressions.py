@@ -316,10 +316,13 @@ def test_portfolio_instructions_protects_fresh_profitable_hold_from_rotation():
                     "avg_entry_price": 100,
                     "peak_price": 120,
                     "current_price": 110,
+                    "quantity": 10,
                     "entry_date": datetime.now().strftime("%Y-%m-%d"),
                 }
             },
             max_pos=1,
+            cash_available=0,
+            portfolio_value=1100,
         )
     finally:
         recommender.get_rankings = old_rankings
@@ -328,6 +331,7 @@ def test_portfolio_instructions_protects_fresh_profitable_hold_from_rotation():
 
     assert result["sells"] == []
     assert result["buys"] == []
+    assert result["add_capital_suggestions"][0]["ticker"] == "NEW"
 
 
 def test_portfolio_instructions_requires_trailing_activation():

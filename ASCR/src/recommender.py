@@ -29,12 +29,19 @@ DEFAULT_PORTFOLIO_POLICY = {
     "trailing_winner_widen_pct": 5,
     "rotation": {
         "enabled": True,
-        "min_hold_days": 20,
+        "min_hold_days": 90,
         "protect_profitable_days": 30,
         "candidate_min_event_score": 12,
         "candidate_min_verdict_score": 6,
         "min_score_ratio": 2.0,
         "min_score_gap": 4.0,
+    },
+    "add_capital": {
+        "enabled": True,
+        "min_event_score": 8,
+        "min_verdict_score": 6,
+        "max_suggestions": 3,
+        "suggested_position_pct": 0.10,
     },
 }
 
@@ -356,7 +363,13 @@ def check_sell_signals(ticker: str, days=30) -> dict:
     }
 
 
-def get_portfolio_instructions(current_positions: dict, max_pos: int = 10) -> dict:
+def get_portfolio_instructions(
+    current_positions: dict,
+    max_pos: int = 10,
+    cash_available: float | None = None,
+    portfolio_value: float | None = None,
+    target_position_pct: float = 0.10,
+) -> dict:
     """Generate buy/sell/hold instructions based on market analysis.
 
     Radar decides WHAT to buy/sell based on signals.
@@ -405,6 +418,7 @@ def get_portfolio_instructions(current_positions: dict, max_pos: int = 10) -> di
             "sells": sells,
             "buys": [],
             "holds": [],
+            "add_capital_suggestions": [],
             "rankings": [],
             "bubble": bubble,
         }
@@ -425,6 +439,7 @@ def get_portfolio_instructions(current_positions: dict, max_pos: int = 10) -> di
     sells = []
     buys = []
     holds = []
+    add_capital_suggestions = []
 
     # --- SELL DECISIONS ---
     for ticker, pos in current_positions.items():
@@ -566,7 +581,7 @@ def get_portfolio_instructions(current_positions: dict, max_pos: int = 10) -> di
                 "days_held": _days_held(pos),
             }
 
-        min_rotation_days = int(rotation_policy.get("min_hold_days", 20))
+        min_rotation_days = int(rotation_policy.get("min_hold_days", 90))
         protect_profitable_days = int(rotation_policy.get("protect_profitable_days", 30))
         rotatable = []
         for ticker, meta in held_meta.items():
@@ -633,11 +648,49 @@ def get_portfolio_instructions(current_positions: dict, max_pos: int = 10) -> di
             "thesis": r.get("top_summary", ""),
         })
 
+    add_policy = policy.get("add_capital", {})
+    if add_policy.get("enabled", True):
+        if portfolio_value is None:
+            portfolio_value = 0.0
+            for pos in current_positions.values():
+                qty = pos.get("quantity", 0) or pos.get("shares", 0) or 0
+                price = pos.get("current_price", 0) or pos.get("price", 0) or 0
+                portfolio_value += qty * price
+        if cash_available is None:
+            cash_available = 0.0
+        suggested_position_pct = float(add_policy.get("suggested_position_pct", target_position_pct))
+        target_add_cash = max(portfolio_value * suggested_position_pct - cash_available, 0)
+        buy_tickers = {b["ticker"] for b in buys}
+        min_add_ev = float(add_policy.get("min_event_score", 8))
+        min_add_verdict = float(add_policy.get("min_verdict_score", 6))
+        max_suggestions = int(add_policy.get("max_suggestions", 3))
+        for i, r in enumerate(rankings):
+            if len(add_capital_suggestions) >= max_suggestions:
+                break
+            ticker = r["ticker"]
+            if ticker in held_tickers or ticker in buy_tickers or ticker in excluded:
+                continue
+            if r.get("ev_score", 0) < min_add_ev or r.get("verdict_score", 0) < min_add_verdict:
+                continue
+            add_capital_suggestions.append({
+                "ticker": ticker,
+                "rank": i + 1,
+                "reason": (
+                    f"add_capital_candidate_rank#{i+1}_ev{r['ev_score']:+.0f}_"
+                    f"verdict{r['verdict_score']:.1f}"
+                ),
+                "ev_score": r["ev_score"],
+                "verdict_score": r["verdict_score"],
+                "suggested_cash": round(target_add_cash, 2),
+                "thesis": r.get("top_summary", ""),
+            })
+
     # Log
     try:
         from src.activity_log import log as alog
         alog("recommender", "instructions_generated",
              sells=len(sells), buys=len(buys), holds=len(holds),
+             add_capital=len(add_capital_suggestions),
              sell_tickers=",".join(s["ticker"] for s in sells),
              buy_tickers=",".join(b["ticker"] for b in buys))
     except Exception:
@@ -645,9 +698,10 @@ def get_portfolio_instructions(current_positions: dict, max_pos: int = 10) -> di
 
     return {
         "sells": sells,
-        "buys": buys,
+        "buys": buys, 
         "holds": holds,
-        "rankings": [{"ticker": r["ticker"], "ev_score": r["ev_score"],
+        "add_capital_suggestions": add_capital_suggestions,
+        "rankings": [{"ticker": r["ticker"], "ev_score": r["ev_score"], 
                       "verdict_score": r["verdict_score"]} for r in rankings[:max_pos]],
         "bubble": bubble,
     }

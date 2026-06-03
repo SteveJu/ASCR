@@ -15,7 +15,7 @@ sell:
   hard_stop_pct: -20
   trailing_stop_activation_pct: 30
   trailing_stop_from_peak_pct: -30
-  min_hold_days_before_rotation: 20
+  min_hold_days_before_rotation: 90
 
 ascr:
   db_path: "../ASCR/data/ascr.sqlite"
