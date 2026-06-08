@@ -7,6 +7,7 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src import db, config
+from src.ascr_bridge import call_ascr
 from src.quote_provider import get_live_quote
 from src.utils import get_logger
 
@@ -76,9 +77,7 @@ def cmd_run_daily(args):
 
     # Run event pipeline (results push to ASCR Bot bot via ASCR)
     try:
-        sys.path.insert(0, os.environ.get("ASCR_PROJECT_DIR", "../ASCR"))
-        from src.event_pipeline import run_pipeline
-        events = run_pipeline()
+        events = call_ascr("event_pipeline", "run_pipeline")
         logger.info(f"Event pipeline: {len(events)} actionable events")
     except Exception as e:
         logger.warning(f"Event pipeline: {e}")

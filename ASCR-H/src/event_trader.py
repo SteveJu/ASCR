@@ -4,11 +4,11 @@ Reads instructions from ASCR's recommender and executes them.
 All buy/sell/hold decisions are made by radar.
 """
 import os
-import sys
 from datetime import datetime
 
 # Paper-trader's own modules first
 from src import config as pt_config, db
+from src.ascr_bridge import call_ascr
 from src.decision_logger import log_decision
 from src.trading_rules import validate_trade, validate_trade_full, is_market_open, next_market_open
 from src.utils import get_logger
@@ -18,12 +18,12 @@ logger = get_logger("event_trader")
 PT_DB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                      "data", "ascr_h.sqlite")
 
-# ASCR modules (for activity logging)
-sys.path.insert(0, os.environ.get("ASCR_PROJECT_DIR", "../ASCR"))
-try:
-    from src.activity_log import log as alog
-except ImportError:
-    def alog(*a, **kw): pass
+def alog(*args, **kwargs):
+    """Best-effort ASCR activity log."""
+    try:
+        return call_ascr("activity_log", "log", *args, **kwargs)
+    except Exception:
+        return None
 
 
 # Real-time price cache (60s TTL)
@@ -73,7 +73,6 @@ def _check_pending_trades(conn, current_positions, total_equity):
     Now that it's eligible, we re-check: does radar still want this trade?
     If not, cancel it.
     """
-    import importlib.util
     today = __import__('datetime').datetime.now().strftime("%Y-%m-%d")
 
     pending = conn.execute(
@@ -86,12 +85,11 @@ def _check_pending_trades(conn, current_positions, total_equity):
 
     # Get fresh instructions from radar
     try:
-        spec = importlib.util.spec_from_file_location(
-            "radar_recommender", os.path.join(os.environ.get("ASCR_PROJECT_DIR", "../ASCR"), "src", "recommender.py"))
-        recommender = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(recommender)
-        fresh_instructions = recommender.get_portfolio_instructions(
-            current_positions=current_positions)
+        fresh_instructions = call_ascr(
+            "recommender",
+            "get_portfolio_instructions",
+            current_positions=current_positions,
+        )
     except Exception as e:
         logger.warning(f"Can't re-evaluate pending trades (radar unavailable): {e}")
         return []
@@ -227,7 +225,6 @@ def run_daily() -> dict:
     total_equity = cash + sum(c["current_price"] * c["quantity"] for c in current.values())
 
     # === ASK RADAR FOR INSTRUCTIONS ===
-    import importlib.util
     import signal as _signal
 
     def _radar_timeout_handler(signum, frame):
@@ -240,12 +237,9 @@ def run_daily() -> dict:
         old_handler = _signal.signal(_signal.SIGALRM, _radar_timeout_handler)
         _signal.alarm(120)
 
-        spec = importlib.util.spec_from_file_location(
-            "radar_recommender", os.path.join(os.environ.get("ASCR_PROJECT_DIR", "../ASCR"), "src", "recommender.py"))
-        recommender = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(recommender)
-        get_portfolio_instructions = recommender.get_portfolio_instructions
-        instructions = get_portfolio_instructions(
+        instructions = call_ascr(
+            "recommender",
+            "get_portfolio_instructions",
             current_positions=current,
             max_pos=max_pos,
             cash_available=cash,

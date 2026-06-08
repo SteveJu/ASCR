@@ -13,6 +13,7 @@ from collections import defaultdict
 from math import sqrt
 
 from src import config, db
+from src.event_deduper import canonical_news_title
 from src.ranking_quality import _collect_score_return_pairs, _spearman_corr
 from src.utils import get_logger
 
@@ -251,7 +252,8 @@ def _parse_date(raw):
 
 def _event_signal(event: dict, source_weights: dict, event_type_weights: dict,
                   event_cfg: dict, as_of: datetime, seen: set) -> float:
-    event_key = event.get("hash") or event.get("url") or event.get("headline") or event.get("title")
+    headline = event.get("headline") or event.get("title") or ""
+    event_key = canonical_news_title(headline) or event.get("hash") or event.get("url") or headline
     duplicate_penalty = 1.0
     if event_key:
         if event_key in seen:

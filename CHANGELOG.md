@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.2.0 - Source-Aware Dedup And ASCR-H Import Bridge
+
+- Added source-neutral article identity for syndicated news deduplication
+- Added PR Newswire, GlobeNewswire, and optional X account source intake behind public config
+- Deduplicated event strength, scoring event-alpha, and calibration event signals by canonical headline
+- Added a market shock post-review report command for validating risk-off versus controlled dip-buying responses
+- Added an ASCR-H import bridge so ASCR-H can call ASCR modules without `src` package collisions
+- Updated ASCR and ASCR-H tests for the new bridge, article dedup, source intake, and shock-review behavior
+
+Validation:
+
+- ASCR tests: 91 passed
+- ASCR-H tests: 28 passed
+- Python source compile checks passed
+- Public safety scan found no private token or private path in touched public files
+
 ## v2.1.0 - Frontier Promotion Gate
 
 - Added subdomain-tagged frontier discovery queries for humanoid robotics, commercial space, and quantum computing

@@ -24,7 +24,15 @@ from email.utils import parsedate_to_datetime
 from urllib.parse import quote
 from anthropic import Anthropic
 from src import config, db
+from src.event_deduper import (
+    article_hash,
+    canonical_news_title,
+    deduplicate_articles,
+    enrich_article_identity,
+    find_duplicate_article,
+)
 from src.llm_usage import log_ai_call
+from src.news_sources import fetch_additional_sources
 from src.utils import get_logger
 
 logger = get_logger("event_pipeline")
@@ -136,7 +144,7 @@ SECTOR_QUERIES = [
 def fetch_news(max_per_query=20) -> list:
     """Fetch news from Google News RSS."""
     all_articles = []
-    seen_titles = set()
+    seen_hashes = set()
 
     for query in SECTOR_QUERIES:
         url = f"https://news.google.com/rss/search?q={quote(query)}&hl=en-US&gl=US&ceid=US:en"
@@ -150,22 +158,30 @@ def fetch_news(max_per_query=20) -> list:
             feed = feedparser.parse(resp.content)
             for entry in feed.entries[:max_per_query]:
                 title = entry.get("title", "").strip()
-                # Dedup by title similarity
-                title_key = title.lower()
-                if title_key in seen_titles:
-                    continue
-                seen_titles.add(title_key)
-
-                all_articles.append({
+                article = enrich_article_identity({
                     "title": title,
                     "url": entry.get("link", ""),
                     "published": entry.get("published", ""),
                     "source_query": query,
                 })
+
+                # Dedup by source-neutral article identity; Google News often
+                # syndicates the same story with different publisher suffixes.
+                if article["_hash"] in seen_hashes:
+                    continue
+                seen_hashes.add(article["_hash"])
+                all_articles.append(article)
             time.sleep(0.3)  # rate limit
         except Exception as e:
             logger.warning(f"RSS fetch failed for '{query}': {e}")
 
+    try:
+        additional = fetch_additional_sources(max_per_feed=max_per_query)
+        all_articles.extend(additional)
+    except Exception as exc:
+        logger.warning(f"Additional news sources failed: {exc}")
+
+    all_articles = deduplicate_articles(all_articles)
     logger.info(f"Fetched {len(all_articles)} unique articles from {len(SECTOR_QUERIES)} queries")
     return all_articles
 
@@ -567,10 +583,7 @@ def _published_age_days(published: str) -> int | None:
 
 
 def _canonical_news_title(title: str) -> str:
-    title = (title or "").lower()
-    title = re.sub(r"\s+-\s+[^-]{2,80}$", "", title)
-    title = re.sub(r"[^a-z0-9$%]+", " ", title)
-    return re.sub(r"\s+", " ", title).strip()
+    return canonical_news_title(title)
 
 
 def _term_hits(text: str, terms) -> list:
@@ -984,6 +997,7 @@ def run_pipeline(min_confidence=0.5, min_evidence_delta=3) -> list:
         relevant.extend(filter_headlines(batch))
         time.sleep(0.5)
 
+    relevant = deduplicate_articles(relevant)
     relevant.sort(key=lambda a: a.get("quant_score", 0), reverse=True)
     if len(relevant) > QUANT_RELEVANT_MAX_PER_RUN:
         logger.info(
@@ -1005,11 +1019,19 @@ def run_pipeline(min_confidence=0.5, min_evidence_delta=3) -> list:
             logger.warning(f"Hit LLM cap ({MAX_LLM_CALLS_PER_RUN}). "
                           f"Remaining {len(relevant) - llm_calls} articles skipped.")
             break
-        # Dedup: check if we already have this headline
-        h = hashlib.md5(article["title"].encode()).hexdigest()
+        article = enrich_article_identity(article)
+        # Dedup: check if we already have this article or a syndicated copy.
+        h = article.get("_hash") or article_hash(article)
         with db.get_conn() as conn:
-            existing = conn.execute("SELECT id FROM events WHERE hash=?", (h,)).fetchone()
-        if existing:
+            duplicate = find_duplicate_article(conn, article)
+        if duplicate:
+            prior = duplicate.get("event", {})
+            logger.info(
+                "Skip duplicate article (%s): %s [prior id=%s]",
+                duplicate.get("reason", "duplicate"),
+                article["title"][:120],
+                prior.get("id", "?"),
+            )
             continue
 
         result = analyze_article(article)

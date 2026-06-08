@@ -2,6 +2,7 @@
 import os
 from datetime import datetime, timedelta
 from src import db
+from src.ascr_bridge import call_ascr
 from src.decision_logger import get_benchmark_price, BENCHMARK_TICKER
 from src.utils import get_logger
 
@@ -126,10 +127,7 @@ def generate_weekly_report() -> str:
 
     # Universe scan results (Friday only)
     try:
-        import sys
-        sys.path.insert(0, os.environ.get("ASCR_PROJECT_DIR", "../ASCR"))
-        from src.universe_scanner import scan_events_for_unknown
-        unknown = scan_events_for_unknown()
+        unknown = call_ascr("universe_scanner", "scan_events_for_unknown")
         if unknown:
             lines.append(f"\n<b>🔍 Tickers found outside the universe:</b>")
             lines.append(f"  {', '.join(unknown[:10])}")
@@ -139,9 +137,8 @@ def generate_weekly_report() -> str:
 
     # Upcoming earnings for holdings
     try:
-        from src.event_pipeline import fetch_earnings_calendar
         held_tickers = [p["ticker"] for p in positions]
-        earnings = fetch_earnings_calendar(held_tickers)
+        earnings = call_ascr("event_pipeline", "fetch_earnings_calendar", held_tickers)
         upcoming = [e for e in earnings if e.get("earnings_date") and e.get("source") == "calendar"]
         if upcoming:
             lines.append(f"\n<b>📅 Upcoming earnings for holdings:</b>")
@@ -152,10 +149,7 @@ def generate_weekly_report() -> str:
 
     # Weekly data cleanup
     try:
-        import sys
-        sys.path.insert(0, os.environ.get("ASCR_PROJECT_DIR", "../ASCR"))
-        from src.data_cleanup import run_cleanup
-        cleanup = run_cleanup()
+        cleanup = call_ascr("data_cleanup", "run_cleanup")
         if sum(cleanup.values()) > 0:
             lines.append(f"\n🧹 Data cleanup: removed {sum(cleanup.values())} rows")
     except Exception as e:

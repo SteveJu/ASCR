@@ -376,6 +376,146 @@ def test_portfolio_instructions_requires_trailing_activation():
     assert result["sells"] == []
 
 
+def _setup_shock_review_db(path, tickers, price_rows, score_rows):
+    conn = sqlite3.connect(path)
+    conn.execute("""
+        CREATE TABLE prices (
+            ticker TEXT NOT NULL,
+            date TEXT NOT NULL,
+            open REAL,
+            high REAL,
+            low REAL,
+            close REAL,
+            volume INTEGER,
+            source TEXT DEFAULT 'test',
+            PRIMARY KEY (ticker, date)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE scores (
+            ticker TEXT NOT NULL,
+            date TEXT NOT NULL,
+            evidence_score REAL,
+            asymmetry_score REAL,
+            momentum_score REAL,
+            risk_score REAL,
+            opportunity_score REAL,
+            rating TEXT,
+            PRIMARY KEY (ticker, date)
+        )
+    """)
+    for ticker, date, close in price_rows:
+        conn.execute(
+            "INSERT INTO prices (ticker, date, close, volume) VALUES (?, ?, ?, 1000)",
+            (ticker, date, close),
+        )
+    for row in score_rows:
+        conn.execute(
+            """
+            INSERT INTO scores VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            row,
+        )
+    conn.commit()
+    conn.close()
+
+
+def test_shock_review_waits_for_forward_data_before_policy_change():
+    from src import db
+    from src import shock_review
+
+    fd, path = tempfile.mkstemp(suffix=".sqlite")
+    os.close(fd)
+    tickers = ["A", "B", "C", "D"]
+    price_rows = [
+        ("A", "2026-06-04", 100), ("A", "2026-06-05", 94),
+        ("B", "2026-06-04", 100), ("B", "2026-06-05", 93),
+        ("C", "2026-06-04", 100), ("C", "2026-06-05", 92),
+        ("D", "2026-06-04", 100), ("D", "2026-06-05", 99),
+    ]
+    score_rows = [
+        (ticker, "2026-06-05", 70, 70, 0, 30, 65, "A")
+        for ticker in tickers
+    ]
+
+    old_db_path = db._DB_PATH
+    old_all_tickers = shock_review.config.all_tickers
+    try:
+        _setup_shock_review_db(path, tickers, price_rows, score_rows)
+        db._DB_PATH = path
+        shock_review.config.all_tickers = lambda include_benchmarks=False: tickers
+
+        review = shock_review.build_review(
+            shock_date="2026-06-05",
+            windows=(5,),
+            write_report=False,
+        )
+    finally:
+        db._DB_PATH = old_db_path
+        shock_review.config.all_tickers = old_all_tickers
+        os.remove(path)
+
+    assert review["snapshot"]["level"] == "WARNING"
+    assert review["snapshot"]["action"] == "alert"
+    assert review["outcomes"][0]["completed"] is False
+    assert review["policy_read"]["stance"] == "wait_for_forward_data"
+    assert review["policy_read"]["threshold_recommendation"] == "do_not_change_thresholds_yet"
+
+
+def test_shock_review_allows_controlled_dip_buying_when_quality_dips_outperform():
+    from src import db
+    from src import shock_review
+
+    fd, path = tempfile.mkstemp(suffix=".sqlite")
+    os.close(fd)
+    tickers = ["A", "B", "C", "D"]
+    price_rows = [
+        ("A", "2026-06-04", 100), ("A", "2026-06-05", 91),
+        ("B", "2026-06-04", 100), ("B", "2026-06-05", 92),
+        ("C", "2026-06-04", 100), ("C", "2026-06-05", 94),
+        ("D", "2026-06-04", 100), ("D", "2026-06-05", 99),
+    ]
+    future = {
+        "2026-06-08": {"A": 92, "B": 93, "C": 93, "D": 99},
+        "2026-06-09": {"A": 94, "B": 94, "C": 92, "D": 100},
+        "2026-06-10": {"A": 96, "B": 95, "C": 92, "D": 100},
+        "2026-06-11": {"A": 98, "B": 97, "C": 91, "D": 100},
+        "2026-06-12": {"A": 100, "B": 98, "C": 91, "D": 101},
+    }
+    for date, closes in future.items():
+        for ticker, close in closes.items():
+            price_rows.append((ticker, date, close))
+    score_rows = [
+        ("A", "2026-06-05", 90, 80, 0, 30, 80, "S"),
+        ("B", "2026-06-05", 85, 75, 0, 35, 75, "A"),
+        ("C", "2026-06-05", 60, 45, 0, 80, 45, "B"),
+        ("D", "2026-06-05", 40, 40, 0, 20, 40, "C"),
+    ]
+
+    old_db_path = db._DB_PATH
+    old_all_tickers = shock_review.config.all_tickers
+    try:
+        _setup_shock_review_db(path, tickers, price_rows, score_rows)
+        db._DB_PATH = path
+        shock_review.config.all_tickers = lambda include_benchmarks=False: tickers
+
+        review = shock_review.build_review(
+            shock_date="2026-06-05",
+            windows=(5,),
+            write_report=False,
+        )
+    finally:
+        db._DB_PATH = old_db_path
+        shock_review.config.all_tickers = old_all_tickers
+        os.remove(path)
+
+    assert review["snapshot"]["level"] == "WARNING"
+    assert review["outcomes"][0]["completed"] is True
+    assert review["outcomes"][0]["groups"]["quality_dips"]["count"] == 2
+    assert review["policy_read"]["stance"] == "controlled_dip_buying_allowed"
+    assert review["policy_read"]["dip_buying"] == "allow_only_quality_dips_after_stabilization"
+
+
 def test_db_and_event_pipeline_share_compatible_events_schema():
     from src import db, event_pipeline
 
@@ -415,5 +555,7 @@ if __name__ == "__main__":
     test_portfolio_instructions_full_book_rotation_does_not_name_error()
     test_portfolio_instructions_protects_fresh_profitable_hold_from_rotation()
     test_portfolio_instructions_requires_trailing_activation()
+    test_shock_review_waits_for_forward_data_before_policy_change()
+    test_shock_review_allows_controlled_dip_buying_when_quality_dips_outperform()
     test_db_and_event_pipeline_share_compatible_events_schema()
     print("Regression tests passed")

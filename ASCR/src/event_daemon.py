@@ -13,7 +13,6 @@ Cost model:
 import os
 import sys
 import time
-import hashlib
 import logging
 import signal as _signal
 from datetime import datetime, timedelta
@@ -21,6 +20,13 @@ from datetime import datetime, timedelta
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src import config, db
+from src.event_deduper import (
+    article_hash,
+    deduplicate_articles,
+    enrich_article_identity,
+    find_duplicate_article,
+    stable_hash,
+)
 from src.market_calendar import is_us_market_holiday
 from src.utils import get_logger
 
@@ -74,12 +80,7 @@ def _fetch_new_articles() -> list:
     """Fetch news articles, return list with hash for each."""
     from src.event_pipeline import fetch_news
     articles = fetch_news(max_per_query=10)  # Smaller batch for frequent polling
-
-    for a in articles:
-        h = hashlib.md5(a["title"].encode()).hexdigest()
-        a["_hash"] = h
-
-    return articles
+    return [enrich_article_identity(a) for a in articles]
 
 
 def _fetch_new_filings(tickers: list) -> list:
@@ -89,7 +90,7 @@ def _fetch_new_filings(tickers: list) -> list:
 
     result = []
     for f in filings:
-        h = hashlib.md5(f"{f['ticker']}{f['date']}{f.get('items','')}".encode()).hexdigest()
+        h = stable_hash(f"{f['ticker']}{f['date']}{f.get('items','')}")
         high_priority = any(it in ("1.01", "2.01", "7.01") for it in f.get("important_items", []))
         result.append({
             "title": f"SEC 8-K: {f['ticker']} filed {f['date']} — {f['item_descriptions']}",
@@ -116,7 +117,7 @@ def _filter_and_analyze(new_articles: list) -> list:
 
     # Step 1: quant headline filter. This keeps only material, incremental news
     # and orders it before scarce LLM calls are spent.
-    relevant = filter_headlines(new_articles)
+    relevant = deduplicate_articles(filter_headlines(new_articles))
     if not relevant:
         return []
 
@@ -126,10 +127,16 @@ def _filter_and_analyze(new_articles: list) -> list:
     MAX_PER_CYCLE = 10
     events = []
     for article in relevant[:MAX_PER_CYCLE]:
-        # Dedup by headline hash
-        h = hashlib.md5(article["title"].encode()).hexdigest()
+        article = enrich_article_identity(article)
+        h = article.get("_hash") or article_hash(article)
         with db.get_conn() as conn:
-            if conn.execute("SELECT 1 FROM events WHERE hash=?", (h,)).fetchone():
+            duplicate = find_duplicate_article(conn, article)
+            if duplicate:
+                logger.info(
+                    "Skip duplicate article (%s): %s",
+                    duplicate.get("reason", "duplicate"),
+                    article["title"][:120],
+                )
                 continue
 
         result = analyze_article(article)
@@ -147,6 +154,8 @@ def _filter_and_analyze(new_articles: list) -> list:
 
         result["headline"] = article["title"]
         result["source"] = article.get("source_query", "news")
+        result["url"] = article.get("url", "")
+        result["_hash"] = h
         events.append(result)
 
     return events
@@ -162,9 +171,11 @@ def _store_events(events: list) -> list:
 
     with db.get_conn() as conn:
         for ev in events:
-            h = hashlib.md5(
-                f"{ev['ticker']}{today}{ev.get('event_type','')}{ev.get('headline','')}".encode()
-            ).hexdigest()
+            h = ev.get("_hash") or article_hash({
+                "title": ev.get("headline", ""),
+                "url": ev.get("url", ""),
+                "source_query": ev.get("source", "news"),
+            })
 
             try:
                 conn.execute("""

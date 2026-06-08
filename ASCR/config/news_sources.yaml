@@ -1,0 +1,60 @@
+# Multi-source event intake. Google News remains useful for broad coverage, but
+# these sources add primary wires and curated social signals that quant desks
+# commonly monitor.
+
+rss_feeds:
+  - id: prnewswire_all
+    enabled: true
+    source: prnewswire
+    label: PR Newswire
+    url: https://www.prnewswire.com/rss/news-releases-list.rss
+    max_items: 40
+
+  - id: globenewswire_public_companies
+    enabled: true
+    source: globenewswire
+    label: GlobeNewswire Public Companies
+    url: https://www.globenewswire.com/RssFeed/orgclass/1/feedTitle/GlobeNewswire%20-%20News%20about%20Public%20Companies
+    max_items: 35
+
+  - id: globenewswire_business_contracts
+    enabled: true
+    source: globenewswire
+    label: GlobeNewswire Business Contracts
+    url: https://www.globenewswire.com/RssFeed/subjectcode/7-Business%20Contracts/feedTitle/GlobeNewswire%20-%20Business%20Contracts
+    max_items: 25
+
+  - id: globenewswire_earnings
+    enabled: true
+    source: globenewswire
+    label: GlobeNewswire Earnings
+    url: https://www.globenewswire.com/RssFeed/subjectcode/13-Earnings%20Releases%20And%20Operating%20Results/feedTitle/GlobeNewswire%20-%20Earnings%20Releases%20And%20Operating%20Results
+    max_items: 25
+
+  - id: globenewswire_semiconductors
+    enabled: true
+    source: globenewswire
+    label: GlobeNewswire Semiconductors
+    url: https://www.globenewswire.com/RssFeed/industry/9576-Semiconductors/feedTitle/GlobeNewswire%20-%20Industry%20News%20on%20Semiconductors
+    max_items: 25
+
+  - id: globenewswire_product_services
+    enabled: true
+    source: globenewswire
+    label: GlobeNewswire Product Services
+    url: https://www.globenewswire.com/RssFeed/subjectcode/32-Product%202f%20Services%20Announcement/feedTitle/GlobeNewswire%20-%20Product%20%2C%20Services%20Announcement
+    max_items: 25
+
+x_accounts:
+  enabled: true
+  bearer_token_env: X_BEARER_TOKEN
+  max_items_per_user: 10
+  min_like_count: 0
+  users:
+    - username: aleabitoreddit
+      label: Serenity
+      source: x_serenity
+    # Add more FinTwit or industry accounts here as needed:
+    # - username: example_handle
+    #   label: Example Analyst
+    #   source: x_fintwit

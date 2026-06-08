@@ -6,6 +6,7 @@ from src import config, db
 from src.price_fetcher import get_ticker_info
 from src.rating import compute_rating, compute_tracking_priority
 from src.scoring_feedback import feedback_adjustment
+from src.event_deduper import canonical_news_title
 from src.utils import get_logger
 
 logger = get_logger("scoring")
@@ -358,7 +359,8 @@ def _event_alpha_score(events: list, event_cfg: dict = None, as_of: datetime = N
     top_events = []
 
     for event in events or []:
-        key = event.get("hash") or event.get("url") or event.get("headline") or event.get("title")
+        headline = event.get("headline") or event.get("title") or ""
+        key = canonical_news_title(headline) or event.get("hash") or event.get("url") or headline
         duplicate_penalty = 1.0
         if key:
             if key in seen:

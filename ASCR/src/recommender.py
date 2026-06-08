@@ -11,11 +11,16 @@ Ranking logic:
 """
 import os
 import sqlite3
+from collections import defaultdict
 from datetime import datetime, timedelta
 from src import config
+from src.event_deduper import canonical_news_title
 from src.utils import get_logger
 
 logger = get_logger("recommender")
+
+VERDICT_SCORE = {"STRONG_BUY": 3, "BUY": 2, "HOLD": 0, "AVOID": -2, "SELL": -3}
+CONVICTION_SCORE = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
 
 # Real-time price cache (60s TTL)
 _price_cache = {}
@@ -179,31 +184,57 @@ def get_rankings(days=30, min_event=5) -> list:
     conn = _conn()
     cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
 
-    # Event scores with verdict analysis
-    events = conn.execute("""
-        SELECT ticker,
-               ROUND(AVG(evidence_delta) * MIN(COUNT(*), 8), 1) as ev_score,
-               COUNT(*) as ev_count,
-               COUNT(DISTINCT event_type) as unique_types,
-               GROUP_CONCAT(DISTINCT event_type) as event_types,
-               -- Verdict scoring: STRONG_BUY=3, BUY=2, HOLD=0, AVOID=-2, SELL=-3
-               ROUND(AVG(CASE verdict
-                   WHEN 'STRONG_BUY' THEN 3 WHEN 'BUY' THEN 2
-                   WHEN 'HOLD' THEN 0 WHEN 'AVOID' THEN -2 WHEN 'SELL' THEN -3
-                   ELSE 0 END), 1) as avg_verdict,
-               -- Conviction: HIGH=3, MEDIUM=2, LOW=1
-               ROUND(AVG(CASE conviction
-                   WHEN 'HIGH' THEN 3 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 1
-                   ELSE 0 END), 1) as avg_conviction,
-               GROUP_CONCAT(DISTINCT upside_potential) as upside_potentials
-        FROM events WHERE date >= ?
-        GROUP BY ticker
-    """, (cutoff,)).fetchall()
-    ev_map = {r["ticker"]: dict(r) for r in events}
+    # Event scores with verdict analysis. Deduplicate syndicated copies before
+    # counting, otherwise heat and event strength get inflated by reposts.
+    try:
+        event_rows = conn.execute("""
+            SELECT rowid as id, ticker, hash, headline, event_type, evidence_delta,
+                   verdict, conviction, upside_potential
+            FROM events WHERE date >= ?
+        """, (cutoff,)).fetchall()
+    except sqlite3.OperationalError:
+        event_rows = conn.execute("""
+            SELECT rowid as id, ticker, NULL as hash, headline, event_type, evidence_delta,
+                   verdict, conviction, upside_potential
+            FROM events WHERE date >= ?
+        """, (cutoff,)).fetchall()
+
+    grouped = defaultdict(list)
+    seen_event_keys = set()
+    for row in event_rows:
+        event = dict(row)
+        ticker = event.get("ticker")
+        if not ticker:
+            continue
+        event_key = canonical_news_title(event.get("headline") or "") or event.get("hash") or str(event.get("id"))
+        key = (ticker, event_key)
+        if key in seen_event_keys:
+            continue
+        seen_event_keys.add(key)
+        grouped[ticker].append(event)
+
+    ev_map = {}
+    for ticker, ticker_events in grouped.items():
+        count = len(ticker_events)
+        evidence_values = [float(event.get("evidence_delta") or 0) for event in ticker_events]
+        verdict_values = [VERDICT_SCORE.get(str(event.get("verdict") or "").upper(), 0) for event in ticker_events]
+        conviction_values = [CONVICTION_SCORE.get(str(event.get("conviction") or "").upper(), 0) for event in ticker_events]
+        event_types = sorted({str(event.get("event_type") or "") for event in ticker_events if event.get("event_type")})
+        upside = sorted({str(event.get("upside_potential") or "") for event in ticker_events if event.get("upside_potential")})
+        ev_map[ticker] = {
+            "ticker": ticker,
+            "ev_score": round((sum(evidence_values) / count) * min(count, 8), 1) if count else 0,
+            "ev_count": count,
+            "unique_types": len(event_types),
+            "event_types": ",".join(event_types),
+            "avg_verdict": round(sum(verdict_values) / count, 1) if count else 0,
+            "avg_conviction": round(sum(conviction_values) / count, 1) if count else 0,
+            "upside_potentials": ",".join(upside),
+        }
 
     # Get best thesis for each ticker (highest evidence_delta event)
     thesis_map = {}
-    for ticker in [r["ticker"] for r in events]:
+    for ticker in ev_map:
         row = conn.execute("""
             SELECT investment_thesis, verdict, conviction, upside_potential,
                    moat, catalyst, summary, headline

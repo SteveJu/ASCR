@@ -239,6 +239,25 @@ def cmd_frontier(args):
         print(render_report(payload, limit=args.limit))
 
 
+def cmd_shock_review(args):
+    from src.shock_review import build_review, render_report
+    windows = tuple(
+        int(part.strip())
+        for part in args.windows.split(",")
+        if part.strip()
+    )
+    review = build_review(
+        shock_date=args.date,
+        windows=windows,
+        lookback_days=args.lookback_days,
+        write_report=args.write_report,
+    )
+    if getattr(args, "json", False):
+        print(json.dumps(review, indent=2, sort_keys=True, default=str))
+    else:
+        print(render_report(review))
+
+
 def main():
     parser = argparse.ArgumentParser(prog="ASCR", description="AI Supply Chain Stock Discovery System")
     sub = parser.add_subparsers(dest="command")
@@ -288,6 +307,13 @@ def main():
     p.add_argument("--limit", type=int, default=12)
     p.add_argument("--json", action="store_true")
 
+    p = sub.add_parser("shock-review", help="Post-review market shock response")
+    p.add_argument("--date", default=None)
+    p.add_argument("--windows", default="5,10")
+    p.add_argument("--lookback-days", type=int, default=1)
+    p.add_argument("--write-report", action="store_true")
+    p.add_argument("--json", action="store_true")
+
     args = parser.parse_args()
     commands = {
         "init-db": cmd_init_db, "run-daily": cmd_run_daily, "score": cmd_score,
@@ -295,7 +321,7 @@ def main():
         "update-position": cmd_update_position, "list-alerts": cmd_list_alerts,
         "explain": cmd_explain, "backtest": cmd_backtest, "feedback": cmd_feedback,
         "regime": cmd_regime, "shadows": cmd_shadows, "backtest-historical": cmd_backtest_historical,
-        "ranking": cmd_ranking, "frontier": cmd_frontier,
+        "ranking": cmd_ranking, "frontier": cmd_frontier, "shock-review": cmd_shock_review,
     }
     if args.command in commands:
         commands[args.command](args)

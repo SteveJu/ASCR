@@ -17,6 +17,7 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src import db, config
+from src.ascr_bridge import call_ascr
 from src.trading_rules import is_market_open
 from src.utils import get_logger
 
@@ -180,7 +181,6 @@ def run_intraday_trades() -> dict:
     Called at 12:30 alongside monitoring. Complements 09:45 daily run.
     """
     from src.trading_rules import is_market_open, validate_trade_full
-    import importlib.util
 
     mkt_open, mkt_reason = is_market_open()
     if not mkt_open:
@@ -201,11 +201,6 @@ def run_intraday_trades() -> dict:
 
     # Ask radar for instructions
     try:
-        spec = importlib.util.spec_from_file_location(
-            "radar_recommender", os.path.join(os.environ.get("ASCR_PROJECT_DIR", "../ASCR"), "src", "recommender.py"))
-        recommender = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(recommender)
-
         current = {}
         for ticker, pos in positions.items():
             price = _get_realtime_price(ticker) or pos["avg_entry_price"]
@@ -217,7 +212,9 @@ def run_intraday_trades() -> dict:
                 "current_price": price,
             }
 
-        instructions = recommender.get_portfolio_instructions(
+        instructions = call_ascr(
+            "recommender",
+            "get_portfolio_instructions",
             current,
             max_pos=max_pos,
             cash_available=cash,

@@ -27,6 +27,9 @@ def chokepoints() -> dict:
 def frontier_domains() -> dict:
     return load_yaml("frontier_domains.yaml")
 
+def news_sources() -> dict:
+    return load_yaml("news_sources.yaml")
+
 def telegram() -> dict:
     return load_yaml("telegram.yaml")
 
