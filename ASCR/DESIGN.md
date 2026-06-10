@@ -1,4 +1,4 @@
-# ASCR v2.0 — Public Design Document
+# ASCR v2.3 — Public Design Document
 
 ## 1. Philosophy
 
@@ -10,25 +10,28 @@
 
 ## 2. Data Pipeline
 
-### Sources (7, all free)
+### Sources (9, free plus API-optional)
 
 1. **Google News RSS** — 41 sector-specific queries, ~400 articles/run
-2. **SEC 8-K** — Item-level parsing (1.01 contracts, 2.02 earnings, 7.01 FD disclosure, 8.01 other)
-3. **SEC 13F** — 6 major fund holdings (quarterly)
-4. **SEC Form 4** — Insider buying/selling patterns
-5. **Yahoo Finance** — Earnings surprises, analyst rating changes
-6. **Reddit** — r/wallstreetbets, r/stocks, r/investing sentiment
-7. **Price events** — Surge (>5%), crash (>-5%), volume spike (>3× avg)
+2. **Primary newswire RSS** — PR Newswire and GlobeNewswire feeds configured in `config/news_sources.yaml`
+3. **X watchlist** — optional X API v2 account timeline ingest for public watch accounts
+4. **SEC 8-K** — Item-level parsing (1.01 contracts, 2.02 earnings, 7.01 FD disclosure, 8.01 other)
+5. **SEC 13F** — 6 major fund holdings (quarterly)
+6. **SEC Form 4** — Insider buying/selling patterns
+7. **Yahoo Finance** — Earnings surprises, analyst rating changes
+8. **Reddit** — r/wallstreetbets, r/stocks, r/investing sentiment
+9. **Price events** — Surge (>5%), crash (>-5%), volume spike (>3× avg)
 
 ### Processing Chain
 
 ```
 Fetch (Python, free)
+  → Source-aware article identity and syndicated-copy dedup
   → Quant headline pre-score (materiality, surprise, magnitude, actor, noise)
   → Haiku 4.5 filter only as a tie-break when too many candidates remain
   → Gemini deep analysis (structured output; Flash fallback)
     Output: {ticker, verdict, conviction, evidence_delta, thesis, moat, catalyst, bull_case, bear_case}
-  → Store to SQLite (INSERT OR IGNORE, hash dedup)
+  → Store to SQLite (INSERT OR IGNORE, canonical article hash dedup)
   → Log API usage/cost to llm_calls
   → Supply chain propagation (NVDA event → 30 related tickers, 30-50% attenuation)
 ```
@@ -50,7 +53,7 @@ Fetch (Python, free)
 
 ### Scoring
 
-ASCR v2.0 uses the validated scoring stack, keeps frontier discovery, and
+ASCR v2.3 uses the validated scoring stack, keeps frontier discovery, and
 separates price confirmation from event/research conviction:
 
 1. Base factor context: evidence, asymmetry, price confirmation, risk.
@@ -70,7 +73,7 @@ versus full-universe coverage for prices and scores, flag stale full coverage,
 and treat launchd nonzero last exits as failures instead of silently reporting
 loaded jobs as healthy.
 
-v2.0 keeps domain-general discovery for frontier technologies. The frontier
+v2.3 keeps domain-general discovery for frontier technologies. The frontier
 radar maps domain queries, tracks chokepoint candidates, and records thesis
 receipts, but it does not directly generate buy/sell recommendations.
 

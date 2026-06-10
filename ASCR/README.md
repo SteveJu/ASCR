@@ -1,4 +1,4 @@
-# ASCR v2.0
+# ASCR v2.3
 
 AI Supply Chain and Frontier Technology Opportunity Discovery System.
 
@@ -7,15 +7,14 @@ Event-driven signal detection for AI supply chain and adjacent frontier technolo
 ## Architecture
 
 ```
-Data Sources (free, Python-only)         LLM Analysis              Output
+Data Sources (free/API-optional)         LLM Analysis              Output
 ─────────────────────────────────       ──────────────            ────────
 Google News RSS (41 queries)     ──┐    Quant pre-score
-SEC 8-K (item-level parsing)     ──┤    Haiku: tie-break         Rankings
-SEC 13F (6 major funds)          ──┤──▶ Gemini: analyze          ──▶ Buy/Sell signals
-SEC Form 4 (insider trading)     ──┤    Sonnet: fallback         Explosive alerts
+Newswire RSS (PRN/Globe)         ──┤    Haiku: tie-break         Rankings
+X watchlist (optional API)       ──┤──▶ Gemini: analyze          ──▶ Buy/Sell signals
+SEC 8-K / 13F / Form 4           ──┤    Sonnet: fallback         Explosive alerts
 Yahoo Finance (earnings+ratings) ──┤                              ASCR-H trigger
-Reddit (WSB/stocks/investing)    ──┤
-Price events (surge/crash/vol)   ──┘
+Reddit + price events            ──┘
 ```
 
 **Key principle**: Radar = brain. All analysis, ranking, buy/sell decisions happen here. ASCR-H is a pure executor with zero judgment.
@@ -24,7 +23,7 @@ Price events (surge/crash/vol)   ──┘
 
 Continuous monitoring during market hours (9:00 AM - 4:30 PM ET):
 - Polls every 15 minutes for new articles and SEC filings
-- Hash-based dedup — only calls LLM on genuinely new items
+- Source-aware canonical article dedup — only calls LLM on genuinely new items
 - Quant headline scoring keeps material events first and filters low-value topical news before deep analysis
 - Immediately triggers ASCR-H on actionable events
 - Sends Telegram event pushes only for high-impact explosive events; routine actionable events stay logged for ranking and ASCR-H
@@ -45,7 +44,7 @@ Continuous monitoring during market hours (9:00 AM - 4:30 PM ET):
 
 ## Scoring Engine
 
-ASCR v2.0 keeps the validated scoring stack, the quant-style news router,
+ASCR v2.3 keeps the validated scoring stack, the quant-style news router,
 and adds a patient execution policy plus high-impact alert gating:
 
 - base dimensions: evidence, asymmetry, price confirmation, risk
@@ -61,6 +60,7 @@ and adds a patient execution policy plus high-impact alert gating:
 - event analysis defaults to Gemini 3.1 Flash Lite via `ASCR_EVENT_MODEL`
 - weekly health checks distinguish latest single-ticker updates from full-universe coverage and flag launchd nonzero last exits
 - quant headline scoring prioritizes materiality, surprise, magnitude, affected actor, and second-order supply-chain implications
+- source-aware canonical headline identity prevents syndicated copies from inflating event strength, heat, scoring, and user-facing lists
 - frontier domain discovery tracks AI infrastructure, humanoid robotics, robotics automation, commercial space, quantum computing, and frontier energy
 - chokepoint scoring ranks watch-only bottleneck candidates by scarcity, dependency, concentration, validation, timing, and crowding risk
 - thesis receipts preserve original discovery logic and later price outcomes for accountability

@@ -1,6 +1,6 @@
 # ASCR: AI Supply Chain Radar
 
-**Version:** v2.0.0 event-research scoring and explosive alerts
+**Version:** v2.3.0 multi-source event intake and source-aware dedup
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](#quick-start)
 [![Status](https://img.shields.io/badge/status-research%20framework-orange)](#current-status)
@@ -62,10 +62,11 @@ The system turns public events into structured evidence, then ranks companies by
 ASCR, the brain:
 
 - fetches public market information
-- watches news, SEC filings, price events, and supply-chain signals
+- watches newswire/RSS feeds, optional X account feeds, SEC filings, price events, and supply-chain signals
 - maps frontier technology domains and watch-only chokepoint themes
 - tracks thesis receipts so early ideas can be reviewed against later evidence
 - routes headlines through a quant-style materiality score before LLM analysis
+- deduplicates syndicated article copies with source-aware canonical identity
 - extracts structured events with LLM assistance
 - logs AI API usage and estimated cost
 - scores evidence, asymmetry, price confirmation, risk, event alpha, valuation sanity checks, business quality, and optional feedback alpha
@@ -419,14 +420,17 @@ See [docs/00-public-release-checklist.md](docs/00-public-release-checklist.md).
 
 ## Current Status
 
-Current public release: v2.0.0
+Current public release: v2.3.0
 
 - sanitized ASCR source tree
 - sanitized ASCR-H source tree
 - sanitized backtest source tree
 - frontier radar for humanoid robotics, robotics automation, commercial space, quantum computing, frontier energy, and AI infrastructure bottlenecks
 - watch-only chokepoint scoring and thesis receipt tracking
+- PR Newswire, GlobeNewswire, and optional X-account event intake behind public-safe config
+- source-aware article deduplication before LLM analysis, scoring, heat ranking, and Telegram-facing event lists
 - quant-style event news router with materiality scoring and LLM budget caps
+- market shock post-review command for studying risk-off versus controlled dip-buying responses
 - explosive-only active event alert gating for Telegram pushes
 - patient portfolio instructions with delayed trailing stops and rotation grace
 - validated scoring engine with calibration and ablation tools

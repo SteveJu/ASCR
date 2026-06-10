@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.3.0 - Multi-Source Intake Distillation
+
+- Distilled the private multi-source event intake into the public ASCR tree with public-safe PR Newswire, GlobeNewswire, and optional X-account configuration
+- Documented source-aware article identity as the default dedup layer before LLM analysis, scoring, heat ranking, and Telegram-facing event views
+- Promoted the market shock post-review command as a public research tool for reviewing risk-off versus controlled dip-buying responses after forward data exists
+- Updated public version labels and release status so the README and design docs match the current source tree
+- Kept private runtime data, logs, SQLite files, account state, Telegram credentials, and local workflow overlays out of the public distillation
+
+Validation:
+
+- ASCR targeted tests: 29 passed
+- ASCR-H bridge tests: 2 passed
+- Python source compile checks passed
+- Public safety scan found no private token or private path in touched public files
+
 ## v2.2.0 - Source-Aware Dedup And ASCR-H Import Bridge
 
 - Added source-neutral article identity for syndicated news deduplication

@@ -2,7 +2,7 @@
 
 Goal: publish ASCR as a usable open-source project that combines ASCR, the signal brain, and ASCR-H, the paper-trading hands, while keeping all private runtime data and credentials out of the public repository.
 
-Current status: v1.7.0 has been published with sanitized ASCR, ASCR-H, backtests, docs, sample configs, tests, the validated scoring engine, the live replay backtest, calibration stability checks, dynamic market calendars, coverage-aware health checks, quote-aware ASCR-H status reporting, cost-controlled Gemini event analysis defaults, CI, license, and sample outputs.
+Current status: v2.3.0 has been published with sanitized ASCR, ASCR-H, backtests, docs, sample configs, tests, the validated scoring engine, source-aware multi-source event intake, market shock post-review tooling, live replay backtests, calibration stability checks, dynamic market calendars, coverage-aware health checks, quote-aware ASCR-H status reporting, cost-controlled Gemini event analysis defaults, CI, license, and sample outputs.
 
 ## Phase 1: Public Shell
 
